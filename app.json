@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Glutenless",
+    "slug": "glutenless",
+    "version": "1.0.0",
+    "scheme": "glutenless",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.glutenless.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Glutenless uses the camera to scan a beer can, bottle, or menu so it can look up gluten content.",
+        "NSMicrophoneUsageDescription": "Glutenless uses the microphone for voice search.",
+        "NSSpeechRecognitionUsageDescription": "Glutenless converts your speech to text to search for a beer by name."
+      }
+    },
+    "android": {
+      "package": "com.glutenless.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["CAMERA", "RECORD_AUDIO"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Glutenless uses the camera to scan a beer can, bottle, or menu so it can look up gluten content."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Glutenless uses the microphone for voice search.",
+          "speechRecognitionPermission": "Glutenless converts your speech to text to search for a beer by name.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
+    ]
+  }
+}

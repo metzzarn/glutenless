@@ -5,6 +5,46 @@ function normalize(s: string): string {
 }
 
 /**
+ * Beer names that are just a style/category term (several dedicated GF
+ * breweries literally name a product "IPA" or "Stout"). A menu's style
+ * column repeats these same words for unrelated beers, so a bare substring
+ * match on one of these names is unreliable on its own.
+ */
+const GENERIC_STYLE_NAMES = new Set([
+  'ipa', 'india pale ale', 'pale ale', 'amber', 'amber ale', 'blonde', 'blonde ale',
+  'stout', 'lager', 'pilsner', 'porter', 'wheat', 'wheat beer', 'gluten free',
+  'saison', 'session ale', 'brown ale', 'red ale', 'golden ale', 'dark lager', 'bock',
+]);
+
+const BREWERY_STOP_WORDS = new Set([
+  'brewing', 'beer', 'beers', 'brewery', 'breweries', 'co', 'company', 'the', 'craft',
+]);
+
+/** The single word most likely to identify a brewery in printed text, e.g. "Glutenberg" out of "Glutenberg (Brasseurs Sans Gluten)". */
+function breweryToken(brewery: string): string {
+  const words = normalize(brewery.replace(/\(.*?\)/g, '')).split(' ').filter(Boolean);
+  return words.find((w) => !BREWERY_STOP_WORDS.has(w) && w.length > 2) ?? words[0] ?? '';
+}
+
+/**
+ * Whether `needle` and `token` both occur within `window` lines of each
+ * other. Menus print a beer's own brewery close to its name/style, so this
+ * distinguishes an entry's own style column from a same-named style word
+ * printed for a different beer elsewhere on the menu.
+ */
+function occursNear(lines: string[], needle: string, token: string, window: number): boolean {
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].includes(needle)) continue;
+    const from = Math.max(0, i - window);
+    const to = Math.min(lines.length, i + window + 1);
+    for (let j = from; j < to; j++) {
+      if (lines[j].includes(token)) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * There's no external beer-recognition database here — matching is limited to
  * the beers already in our local dataset. This finds the beer whose name (or
  * brewery) best overlaps with recognized OCR text, picking the longest match
@@ -31,9 +71,15 @@ export function matchBeersInMenuText(text: string, beers: Beer[]): Beer[] {
   const haystack = normalize(text);
   if (!haystack) return [];
 
+  const lines = text.split('\n').map(normalize);
+
   return beers.filter((beer) => {
     const name = normalize(beer.name);
-    return name && haystack.includes(name);
+    if (!name || !haystack.includes(name)) return false;
+    if (!GENERIC_STYLE_NAMES.has(name)) return true;
+
+    const token = breweryToken(beer.brewery);
+    return !!token && occursNear(lines, name, token, 2);
   });
 }
 

@@ -86,6 +86,29 @@ describe('matchBeersInMenuText', () => {
   it('returns an empty array when no beers are mentioned', () => {
     expect(matchBeersInMenuText('Nothing here', beers)).toEqual([]);
   });
+
+  it('does not match a generic style name (IPA, Stout, Amber...) unless its brewery is also present', () => {
+    // Regular (non-GF) menu where "Estilo" happens to repeat style words that
+    // are also literal product names of unrelated GF beers in our dataset.
+    const menu = `
+      GLUTENBERG
+      BLONDE
+      PALE ALE SIN GLUTEN
+
+      MAREA ALTA
+      IPA
+      INDIA PALE ALE
+
+      PUERTO VIEJO
+      AMBER ALE
+
+      LOBA NEGRA
+      STOUT
+      DRY STOUT
+    `;
+    const matches = matchBeersInMenuText(menu, beers).map((b) => `${b.brewery} - ${b.name}`);
+    expect(matches).toEqual(['Glutenberg (Brasseurs Sans Gluten) - Blonde']);
+  });
 });
 
 describe('matchBeerByBarcode', () => {

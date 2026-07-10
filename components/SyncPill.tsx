@@ -2,8 +2,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, radii, spacing } from '../lib/theme';
 
 /**
- * Purely cosmetic (no backend in this build, per plan): taps just flip a local
- * "synced/offline" label, matching the prototype's sync affordance.
+ * Reflects the real result of the last sync attempt against the server
+ * (lib/sync.ts). Tapping retries the sync — a no-op while one is already in
+ * flight (see app/index.tsx).
  */
 export function SyncPill({ synced, onPress }: { synced: boolean; onPress: () => void }) {
   return (

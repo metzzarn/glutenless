@@ -30,6 +30,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "extra": {
+      "beersUrl": "https://cdn.jsdelivr.net/gh/metzzarn/glutenless@main/data/beers.json"
+    },
     "plugins": [
       "expo-router",
       "expo-status-bar",

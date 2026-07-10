@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BeerRow } from '../components/BeerRow';
@@ -10,6 +10,7 @@ import { SearchBar } from '../components/SearchBar';
 import { SyncPill } from '../components/SyncPill';
 import { listBeers, toggleFavorite, type Beer } from '../lib/db';
 import { useVoiceSearch } from '../lib/speech';
+import { syncFromServer } from '../lib/sync';
 import type { FilterKey } from '../lib/status';
 import { colors, fonts, spacing } from '../lib/theme';
 
@@ -21,11 +22,28 @@ export default function HomeScreen() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [beers, setBeers] = useState<Beer[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [synced, setSynced] = useState(true);
+  const [synced, setSynced] = useState(false);
+  const syncingRef = useRef(false);
 
   useEffect(() => {
     listBeers(filter, query).then(setBeers);
   }, [filter, query]);
+
+  const retrySync = useCallback(async () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    const ok = await syncFromServer();
+    setSynced(ok);
+    syncingRef.current = false;
+    if (ok) listBeers(filter, query).then(setBeers);
+  }, [filter, query]);
+
+  useEffect(() => {
+    retrySync();
+    // Deliberately once-on-mount: retrySync's filter/query deps would
+    // otherwise trigger a network sync on every search/filter change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { listening, start, stop } = useVoiceSearch((transcript) => {
     setQuery(transcript);
@@ -69,7 +87,7 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.title}>Glutenless</Text>
         </View>
-        <SyncPill synced={synced} onPress={() => setSynced((s) => !s)} />
+        <SyncPill synced={synced} onPress={retrySync} />
       </View>
 
       <SearchBar

@@ -11,13 +11,13 @@ const beers: Beer[] = (beersSeed as Omit<Beer, 'favorite' | 'status'>[]).map(toB
 
 describe('matchBeerByText', () => {
   it('matches on exact name within noisy OCR text', () => {
-    const ocr = 'GLUTENBERG\nBlonde Ale\n4.5% ABV';
-    expect(matchBeerByText(ocr, beers)?.name).toBe('Glutenberg Blonde');
+    const ocr = 'DAURA DAMM\nPale Lager\n5.4% ABV';
+    expect(matchBeerByText(ocr, beers)?.name).toBe('Daura Damm');
   });
 
   it('matches a beer via its brewery when the brewery is unique in the dataset', () => {
     const ocr = 'Stone Delicious IPA - Stone Brewing';
-    expect(matchBeerByText(ocr, beers)?.name).toBe('Stone Delicious IPA');
+    expect(matchBeerByText(ocr, beers)?.name).toBe('Delicious IPA');
   });
 
   it('prefers the longer/more specific needle when multiple candidates match', () => {
@@ -38,6 +38,7 @@ describe('matchBeerByText', () => {
         country: 'USA',
         grains: ['sorghum'],
         note: '',
+        breweryUrl: '',
       }),
       toBeer({
         id: 1002,
@@ -53,6 +54,7 @@ describe('matchBeerByText', () => {
         country: 'USA',
         grains: ['millet'],
         note: '',
+        breweryUrl: '',
       }),
     ];
     const ocr = 'Shrouded Summit IPA - Ghostfish Brewing';
@@ -73,11 +75,11 @@ describe('matchBeersInMenuText', () => {
     const menu = `
       DRAFT LIST
       Redbridge .... 7
-      Riva Stout .... 8
+      Daura Damm .... 8
       Some Other Non-GF Beer .... 6
     `;
     const matches = matchBeersInMenuText(menu, beers).map((b) => b.name);
-    expect(matches).toEqual(expect.arrayContaining(['Redbridge', 'Riva Stout']));
+    expect(matches).toEqual(expect.arrayContaining(['Redbridge', 'Daura Damm']));
     expect(matches).toHaveLength(2);
   });
 

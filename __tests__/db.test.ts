@@ -81,7 +81,7 @@ describe('db seeding + queries', () => {
     expect(db.columns.get('ibu')?.notnull).toBe(false);
 
     expect(await listBeers('all', '')).toHaveLength(beersSeed.length);
-    const daura = await getBeerById(47);
+    const daura = await getBeerById(129);
     expect(daura?.name).toBe('Daura Damm');
     expect(daura?.country).toBe('Spain');
   });
@@ -105,6 +105,7 @@ describe('db seeding + queries', () => {
       country: 'Nowhere',
       grains: '[]',
       note: 'no longer in the dataset',
+      breweryUrl: '',
       favorite: 0,
     });
     expect(await getBeerById(999999)).not.toBeNull();
@@ -128,28 +129,31 @@ describe('db seeding + queries', () => {
 
   it('fetches a single beer by id', async () => {
     const beer = await getBeerById(1);
-    expect(beer?.name).toBe('Glutenberg Blonde');
+    expect(beer?.name).toBe('Blonde');
+    expect(beer?.brewery).toBe('Glutenberg (Brasseurs Sans Gluten)');
     expect(beer?.favorite).toBe(false);
   });
 
-  it('round-trips grains as a real array and gluten flags as real booleans', async () => {
-    const daura = await getBeerById(47);
+  it('round-trips grains, gluten flags, and breweryUrl', async () => {
+    const daura = await getBeerById(129);
     expect(daura?.name).toBe('Daura Damm');
     expect(daura?.country).toBe('Spain');
-    expect(daura?.grains).toEqual(['barley malt', 'rice']);
+    expect(daura?.grains).toEqual(['barley']);
     expect(daura?.glutenFree).toBe(false);
     expect(daura?.glutenRemoved).toBe(true);
+    expect(daura?.breweryUrl).toBe('https://www.estrelladamm.com/');
 
     const glutenberg = await getBeerById(1);
     expect(glutenberg?.grains).toEqual(['millet', 'corn']);
     expect(glutenberg?.glutenRemoved).toBe(false);
+    expect(glutenberg?.breweryUrl).toBe('https://www.glutenberg.ca/');
   });
 
   it('round-trips a null ibu and a discontinued flag', async () => {
-    const redAle = await getBeerById(4); // Glutenberg Red (Rousse), ibu: null
+    const redAle = await getBeerById(4); // Red / Rousse (Glutenberg), ibu: null
     expect(redAle?.ibu).toBeNull();
 
-    const aurochs = await getBeerById(69); // Aurochs Blonde Ale, discontinued
+    const aurochs = await getBeerById(69); // Porter (Aurochs), discontinued
     expect(aurochs?.discontinued).toBe(true);
 
     const glutenberg = await getBeerById(1);

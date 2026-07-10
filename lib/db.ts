@@ -17,6 +17,7 @@ export type Beer = {
   country: string;
   grains: string[];
   note: string;
+  breweryUrl: string;
   favorite: boolean;
 };
 
@@ -61,12 +62,13 @@ const TABLE_COLUMNS_DDL = `
   country TEXT NOT NULL DEFAULT '',
   grains TEXT NOT NULL DEFAULT '[]',
   note TEXT NOT NULL,
+  breweryUrl TEXT NOT NULL DEFAULT '',
   favorite INTEGER NOT NULL DEFAULT 0
 `;
 
 const CANONICAL_COLUMNS = [
   'id', 'name', 'brewery', 'style', 'abv', 'ibu', 'status', 'ppm',
-  'glutenFree', 'glutenRemoved', 'discontinued', 'country', 'grains', 'note', 'favorite',
+  'glutenFree', 'glutenRemoved', 'discontinued', 'country', 'grains', 'note', 'breweryUrl', 'favorite',
 ];
 
 /**
@@ -90,28 +92,30 @@ async function migrateSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   if (!missingColumns && !ibuIsNotNull) return;
 
   const copyColumns = CANONICAL_COLUMNS.filter((name) => existingNames.has(name)).join(', ');
+  await db.execAsync('DROP TABLE beers_new;');
   await db.execAsync(`CREATE TABLE beers_new (${TABLE_COLUMNS_DDL});`);
   await db.execAsync(`INSERT INTO beers_new (${copyColumns}) SELECT ${copyColumns} FROM beers;`);
   await db.execAsync('DROP TABLE beers;');
   await db.execAsync('ALTER TABLE beers_new RENAME TO beers;');
 }
 
-export async function initDb(): Promise<void> {
+/**
+ * Upserts a full batch of beers by id and never touches `favorite`, so an
+ * update never wipes out anything the user has already favorited. Gluten
+ * status isn't carried on the input — it's derived from glutenFree so the
+ * two can't drift. Treats `beers` as the complete authoritative set: any
+ * existing row whose id isn't in it gets deleted, so a beer removed from the
+ * bundled dataset (or from the server on a future sync) doesn't linger as an
+ * orphan. Shared by the bundled-JSON seed (`initDb`) and server sync
+ * (`lib/sync.ts`) so both go through identical upsert logic.
+ */
+export async function upsertBeers(beers: Omit<Beer, 'favorite' | 'status'>[]): Promise<void> {
   const db = await getDb();
-  await db.execAsync(`CREATE TABLE IF NOT EXISTS beers (${TABLE_COLUMNS_DDL});`);
-  await migrateSchema(db);
-
-  // Re-run on every launch so dataset edits (data/beers.json) show up without
-  // a reinstall. Upserts by id and never touches `favorite`, so an update
-  // never wipes out anything the user has already favorited. Gluten status
-  // isn't stored in the JSON — it's derived from glutenFree so the two can't
-  // drift.
-  const seed = beersSeed as Omit<Beer, 'favorite' | 'status'>[];
-  for (const b of seed) {
+  for (const b of beers) {
     const status = statusFromFlags(b.glutenFree);
     await db.runAsync(
-      `INSERT INTO beers (id, name, brewery, style, abv, ibu, status, ppm, glutenFree, glutenRemoved, discontinued, country, grains, note, favorite)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      `INSERT INTO beers (id, name, brewery, style, abv, ibu, status, ppm, glutenFree, glutenRemoved, discontinued, country, grains, note, breweryUrl, favorite)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
        ON CONFLICT(id) DO UPDATE SET
          name = excluded.name,
          brewery = excluded.brewery,
@@ -125,7 +129,8 @@ export async function initDb(): Promise<void> {
          discontinued = excluded.discontinued,
          country = excluded.country,
          grains = excluded.grains,
-         note = excluded.note`,
+         note = excluded.note,
+         breweryUrl = excluded.breweryUrl`,
       [
         b.id,
         b.name,
@@ -141,18 +146,28 @@ export async function initDb(): Promise<void> {
         b.country,
         JSON.stringify(b.grains),
         b.note,
+        b.breweryUrl,
       ]
     );
   }
 
-  // Beers removed from data/beers.json shouldn't linger as orphaned rows.
-  if (seed.length > 0) {
-    const placeholders = seed.map(() => '?').join(', ');
+  if (beers.length > 0) {
+    const placeholders = beers.map(() => '?').join(', ');
     await db.runAsync(
       `DELETE FROM beers WHERE id NOT IN (${placeholders})`,
-      seed.map((b) => b.id)
+      beers.map((b) => b.id)
     );
   }
+}
+
+export async function initDb(): Promise<void> {
+  const db = await getDb();
+  await db.execAsync(`CREATE TABLE IF NOT EXISTS beers (${TABLE_COLUMNS_DDL});`);
+  await migrateSchema(db);
+
+  // Re-run on every launch so dataset edits (data/beers.json) show up without
+  // a reinstall.
+  await upsertBeers(beersSeed as Omit<Beer, 'favorite' | 'status'>[]);
 }
 
 /** Pure helper (no db access) so it's testable head-on: builds the WHERE clause + params for listBeers. */

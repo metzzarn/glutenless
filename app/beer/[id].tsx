@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DiscontinuedBadge } from '../../components/DiscontinuedBadge';
@@ -88,6 +88,15 @@ export default function BeerDetailScreen() {
 
       <GlutenStatusBox status={beer.status} ppm={beer.ppm} note={beer.note} />
 
+      {beer.breweryUrl ? (
+        <Pressable
+          style={styles.linkButton}
+          onPress={() => Linking.openURL(beer.breweryUrl)}
+        >
+          <Text style={styles.linkButtonText}>Visit website ↗</Text>
+        </Pressable>
+      ) : null}
+
       <Text style={styles.source}>
         Source: producer-reported data. If you have celiac disease, confirm with the brewery before
         drinking.
@@ -149,6 +158,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   grainChipText: { fontFamily: fonts.sansBold, fontSize: 11.5, color: colors.brand },
+  linkButton: {
+    alignSelf: 'flex-start',
+    marginTop: spacing(3.5),
+    paddingVertical: spacing(1.5),
+  },
+  linkButtonText: { fontFamily: fonts.sansBold, fontSize: 13.5, color: colors.brand },
   source: {
     fontFamily: fonts.sans,
     fontSize: 11.5,

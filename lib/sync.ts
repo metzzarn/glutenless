@@ -20,20 +20,34 @@ const REQUIRED_KEYS: (keyof RemoteBeer)[] = [
   'breweryUrl',
 ];
 
-function isValidRemoteBeers(data: unknown): data is RemoteBeer[] {
-  if (!Array.isArray(data) || data.length === 0) return false;
-  return data.every(
-    (item) =>
-      typeof item === 'object' && item !== null && REQUIRED_KEYS.every((key) => key in item)
-  );
+type ValidationResult = { valid: true } | { valid: false; reason: string };
+
+/** Same check as before, but pinpoints which item/field is wrong instead of just failing. */
+function validateRemoteBeers(data: unknown): ValidationResult {
+  if (!Array.isArray(data)) return { valid: false, reason: `expected an array, got ${typeof data}` };
+  if (data.length === 0) return { valid: false, reason: 'array was empty' };
+
+  for (let i = 0; i < data.length; i++) {
+    const item = data[i];
+    if (typeof item !== 'object' || item === null) {
+      return { valid: false, reason: `item at index ${i} is not an object (got ${typeof item})` };
+    }
+    const missing = REQUIRED_KEYS.filter((key) => !(key in item));
+    if (missing.length > 0) {
+      const label = 'name' in item ? `"${(item as Record<string, unknown>).name}"` : `index ${i}`;
+      return { valid: false, reason: `item ${label} is missing: ${missing.join(', ')}` };
+    }
+  }
+  return { valid: true };
 }
 
 const SYNC_TIMEOUT_MS = 5000;
 
 /**
- * Fetches the full beer list from the hosted data/beers.json (served over
- * jsDelivr's GitHub CDN — real HTTPS, no server process to run) and upserts
- * it locally. Local bundled data always seeds first (see lib/db.ts:initDb),
+ * Fetches the full beer list from the hosted data/beers.json (served
+ * straight from raw.githubusercontent.com — real HTTPS, no server process to
+ * run, and no CDN cache lag after a push, unlike jsDelivr's @main alias) and
+ * upserts it locally. Local bundled data always seeds first (see lib/db.ts:initDb),
  * so this is strictly best-effort — an unreachable host, a bad response, or
  * a timeout just means the app keeps running on whatever's already in
  * SQLite.
@@ -56,12 +70,13 @@ export async function syncFromServer(): Promise<boolean> {
     }
 
     const data: unknown = await res.json();
-    if (!isValidRemoteBeers(data)) {
-      console.warn('[sync] response was not a valid beer array:', data);
+    const validation = validateRemoteBeers(data);
+    if (!validation.valid) {
+      console.warn(`[sync] response was not a valid beer array: ${validation.reason}`);
       return false;
     }
 
-    await upsertBeers(data);
+    await upsertBeers(data as RemoteBeer[]);
     return true;
   } catch (err) {
     console.warn(`[sync] failed to fetch ${beersUrl}:`, err);

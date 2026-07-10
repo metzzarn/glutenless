@@ -7,7 +7,7 @@ import { CameraSheet } from '../components/CameraSheet';
 import { FilterChips } from '../components/FilterChips';
 import { ListeningOverlay } from '../components/ListeningOverlay';
 import { SearchBar } from '../components/SearchBar';
-import { SyncPill } from '../components/SyncPill';
+import { SyncPill, type SyncStatus } from '../components/SyncPill';
 import { listBeers, toggleFavorite, type Beer } from '../lib/db';
 import { useVoiceSearch } from '../lib/speech';
 import { syncFromServer } from '../lib/sync';
@@ -22,27 +22,40 @@ export default function HomeScreen() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [beers, setBeers] = useState<Beer[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [synced, setSynced] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('offline');
   const syncingRef = useRef(false);
+  const failedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     listBeers(filter, query).then(setBeers);
   }, [filter, query]);
 
-  const retrySync = useCallback(async () => {
+  const runSync = useCallback(async () => {
     if (syncingRef.current) return;
     syncingRef.current = true;
+    if (failedTimerRef.current) clearTimeout(failedTimerRef.current);
+    setSyncStatus('syncing');
+
     const ok = await syncFromServer();
-    setSynced(ok);
     syncingRef.current = false;
-    if (ok) listBeers(filter, query).then(setBeers);
+    if (ok) {
+      setSyncStatus('synced');
+      listBeers(filter, query).then(setBeers);
+    } else {
+      setSyncStatus('failed');
+      failedTimerRef.current = setTimeout(() => setSyncStatus('offline'), 2500);
+    }
   }, [filter, query]);
 
   useEffect(() => {
-    retrySync();
-    // Deliberately once-on-mount: retrySync's filter/query deps would
+    runSync();
+    // Deliberately once-on-mount: runSync's filter/query deps would
     // otherwise trigger a network sync on every search/filter change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => () => {
+    if (failedTimerRef.current) clearTimeout(failedTimerRef.current);
   }, []);
 
   const { listening, start, stop } = useVoiceSearch((transcript) => {
@@ -87,7 +100,7 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.title}>Glutenless</Text>
         </View>
-        <SyncPill synced={synced} onPress={retrySync} />
+        <SyncPill status={syncStatus} onPress={runSync} />
       </View>
 
       <SearchBar

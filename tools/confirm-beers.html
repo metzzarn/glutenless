@@ -269,6 +269,9 @@
   ];
   var FIELD_ORDER = ["id","name","brewery","country","style","abv","ibu","ppm",
     "glutenFree","glutenRemoved","discontinued","grains","note","breweryUrl","confirmed"];
+  // A beer drops out of the "Unconfirmed" filter once these safety-critical
+  // fields are checked off, even if grains/note/breweryUrl are still pending.
+  var REQUIRED_FOR_FULL = ["glutenFree", "glutenRemoved", "ppm"];
   var STORAGE_KEY = "confirm-beers:autosave";
 
   var beers = [];
@@ -293,11 +296,14 @@
 
   function confirmableCount(){ return CONFIRMABLE.length; }
 
+  // "Full" means every field is confirmed. Short of that, a beer still drops
+  // out of the "Unconfirmed" filter once the three safety-critical fields
+  // (gluten-free, gluten-removed, ppm) are all confirmed — it's just "partial".
   function statusOf(beer){
-    var n = (beer.confirmed || []).length;
-    if (n === 0) return "unconfirmed";
-    if (n >= confirmableCount()) return "full";
-    return "partial";
+    var confirmed = beer.confirmed || [];
+    if (confirmed.length >= confirmableCount()) return "full";
+    var requiredMet = REQUIRED_FOR_FULL.every(function(key){ return confirmed.indexOf(key) !== -1; });
+    return requiredMet ? "partial" : "unconfirmed";
   }
 
   function cardStatusAttr(beer){

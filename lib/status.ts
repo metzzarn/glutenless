@@ -28,3 +28,18 @@ export const FILTERS: { key: FilterKey; label: string }[] = [
 export function statusFromFlags(glutenFree: boolean): GlutenStatus {
   return glutenFree ? 'free' : 'low';
 }
+
+/**
+ * A beer's `confirmed` list records which fields a human has checked against
+ * a primary source. Gluten status counts as confirmed only when whichever
+ * flag is actually true for this beer (glutenFree or glutenRemoved) is
+ * itself on that list — confirming the other, inapplicable flag doesn't count.
+ */
+export function isGlutenStatusConfirmed(beer: {
+  glutenFree: boolean;
+  glutenRemoved: boolean;
+  confirmed?: string[];
+}): boolean {
+  const key = beer.glutenFree ? 'glutenFree' : 'glutenRemoved';
+  return (beer.confirmed ?? []).includes(key);
+}

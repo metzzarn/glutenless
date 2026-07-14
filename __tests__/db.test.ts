@@ -106,6 +106,7 @@ describe('db seeding + queries', () => {
       grains: '[]',
       note: 'no longer in the dataset',
       breweryUrl: '',
+      confirmed: '[]',
       favorite: 0,
     });
     expect(await getBeerById(999999)).not.toBeNull();

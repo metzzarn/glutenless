@@ -18,15 +18,18 @@ export type Beer = {
   grains: string[];
   note: string;
   breweryUrl: string;
+  /** Field names from CONFIRMABLE (e.g. "glutenFree", "ppm") a human has verified against a primary source. */
+  confirmed?: string[];
   favorite: boolean;
 };
 
-type BeerRow = Omit<Beer, 'favorite' | 'glutenFree' | 'glutenRemoved' | 'discontinued' | 'grains'> & {
+type BeerRow = Omit<Beer, 'favorite' | 'glutenFree' | 'glutenRemoved' | 'discontinued' | 'grains' | 'confirmed'> & {
   favorite: number;
   glutenFree: number;
   glutenRemoved: number;
   discontinued: number;
   grains: string;
+  confirmed: string;
 };
 
 const rowToBeer = (row: BeerRow): Beer => ({
@@ -36,6 +39,7 @@ const rowToBeer = (row: BeerRow): Beer => ({
   glutenRemoved: !!row.glutenRemoved,
   discontinued: !!row.discontinued,
   grains: JSON.parse(row.grains) as string[],
+  confirmed: JSON.parse(row.confirmed || '[]') as string[],
 });
 
 let dbPromise: ReturnType<typeof SQLite.openDatabaseAsync> | null = null;
@@ -63,12 +67,13 @@ const TABLE_COLUMNS_DDL = `
   grains TEXT NOT NULL DEFAULT '[]',
   note TEXT NOT NULL,
   breweryUrl TEXT NOT NULL DEFAULT '',
+  confirmed TEXT NOT NULL DEFAULT '[]',
   favorite INTEGER NOT NULL DEFAULT 0
 `;
 
 const CANONICAL_COLUMNS = [
   'id', 'name', 'brewery', 'style', 'abv', 'ibu', 'status', 'ppm',
-  'glutenFree', 'glutenRemoved', 'discontinued', 'country', 'grains', 'note', 'breweryUrl', 'favorite',
+  'glutenFree', 'glutenRemoved', 'discontinued', 'country', 'grains', 'note', 'breweryUrl', 'confirmed', 'favorite',
 ];
 
 /**
@@ -114,8 +119,8 @@ export async function upsertBeers(beers: Omit<Beer, 'favorite' | 'status'>[]): P
   for (const b of beers) {
     const status = statusFromFlags(b.glutenFree);
     await db.runAsync(
-      `INSERT INTO beers (id, name, brewery, style, abv, ibu, status, ppm, glutenFree, glutenRemoved, discontinued, country, grains, note, breweryUrl, favorite)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      `INSERT INTO beers (id, name, brewery, style, abv, ibu, status, ppm, glutenFree, glutenRemoved, discontinued, country, grains, note, breweryUrl, confirmed, favorite)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
        ON CONFLICT(id) DO UPDATE SET
          name = excluded.name,
          brewery = excluded.brewery,
@@ -130,7 +135,8 @@ export async function upsertBeers(beers: Omit<Beer, 'favorite' | 'status'>[]): P
          country = excluded.country,
          grains = excluded.grains,
          note = excluded.note,
-         breweryUrl = excluded.breweryUrl`,
+         breweryUrl = excluded.breweryUrl,
+         confirmed = excluded.confirmed`,
       [
         b.id,
         b.name,
@@ -147,6 +153,7 @@ export async function upsertBeers(beers: Omit<Beer, 'favorite' | 'status'>[]): P
         JSON.stringify(b.grains),
         b.note,
         b.breweryUrl,
+        JSON.stringify(b.confirmed ?? []),
       ]
     );
   }

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DiscontinuedBadge } from '../../components/DiscontinuedBadge';
 import { GlutenStatusBox } from '../../components/GlutenStatusBox';
 import { getBeerById, toggleFavorite, type Beer } from '../../lib/db';
+import { isGlutenStatusConfirmed } from '../../lib/status';
 import { colors, fonts, radii, spacing } from '../../lib/theme';
 
 export default function BeerDetailScreen() {
@@ -86,7 +87,12 @@ export default function BeerDetailScreen() {
         ))}
       </View>
 
-      <GlutenStatusBox status={beer.status} ppm={beer.ppm} note={beer.note} />
+      <GlutenStatusBox
+        status={beer.status}
+        ppm={beer.ppm}
+        note={beer.note}
+        confirmed={isGlutenStatusConfirmed(beer)}
+      />
 
       {beer.breweryUrl ? (
         <Pressable

@@ -80,6 +80,7 @@ class FakeDatabase {
         grains,
         note,
         breweryUrl,
+        confirmed,
       ] = params;
       const fields = {
         name,
@@ -96,6 +97,7 @@ class FakeDatabase {
         grains,
         note,
         breweryUrl,
+        confirmed,
       };
       const existing = this.rows.find((r) => r.id === id);
       if (existing && sql.includes('ON CONFLICT')) {

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beer List — Confirmation Desk</title>
+<style>
+  :root{
+    --bg:#ece1cb;
+    --bg-card:#f7f0e0;
+    --ink:#2a2118;
+    --ink-soft:#6b5d4a;
+    --accent:#a8551b;
+    --accent-2:#6b7a3f;
+    --verified:#3f6b37;
+    --pending:#a3352a;
+    --line:#c9b98f;
+    --line-strong:#a9976a;
+    --focus:#2f6fa8;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1b1712;
+      --bg-card:#262019;
+      --ink:#efe6d3;
+      --ink-soft:#a99c86;
+      --accent:#e3a455;
+      --accent-2:#9cb46b;
+      --verified:#7fbf6c;
+      --pending:#e06a52;
+      --line:#423a2c;
+      --line-strong:#57493333;
+      --focus:#7fb2e0;
+      color-scheme: dark;
+    }
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(1200px 700px at 15% -10%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height:1.4;
+    min-height:100vh;
+  }
+  .display{ font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif; }
+  .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+
+  a{ color:var(--accent); }
+
+  header.topbar{
+    position:sticky; top:0; z-index:10;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(6px);
+    border-bottom:1px solid var(--line);
+    padding: 14px 20px;
+  }
+  .topbar-inner{
+    max-width:1000px; margin:0 auto;
+    display:flex; flex-wrap:wrap; align-items:center; gap:14px 20px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; margin-right:auto; }
+  .brand h1{
+    font-size:1.35rem; margin:0; font-weight:700; letter-spacing:0.01em;
+  }
+  .brand .tagline{
+    font-size:0.75rem; color:var(--ink-soft); font-style:italic;
+  }
+
+  .btn{
+    font-family:inherit; font-size:0.85rem; font-weight:600;
+    border:1px solid var(--line-strong); background:var(--bg-card); color:var(--ink);
+    padding:7px 13px; border-radius:3px; cursor:pointer;
+  }
+  .btn:hover{ border-color:var(--accent); }
+  .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible{
+    outline:2px solid var(--focus); outline-offset:2px;
+  }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff8ec; }
+  .btn.subtle{ border-color:transparent; background:transparent; color:var(--ink-soft); }
+  .btn.subtle:hover{ color:var(--ink); }
+  .btn[disabled]{ opacity:0.45; cursor:not-allowed; }
+  input[type=file]{ display:none; }
+
+  .tally{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size:0.8rem; color:var(--ink-soft);
+    border-left:1px dashed var(--line-strong); padding-left:14px;
+  }
+  .tally strong{ color:var(--ink); font-weight:700; }
+  .tally .verified-count{ color:var(--verified); font-weight:700; }
+
+  .controls{
+    max-width:1000px; margin:12px auto 0; padding:0 20px;
+    display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center;
+  }
+  .controls input[type=search]{
+    font-family:inherit; font-size:0.9rem;
+    padding:7px 11px; border:1px solid var(--line-strong); border-radius:3px;
+    background:var(--bg-card); color:var(--ink); min-width:220px; flex:1;
+  }
+  .filter-group{ display:flex; gap:4px; background:var(--bg-card); border:1px solid var(--line-strong); border-radius:3px; padding:2px; }
+  .filter-group button{
+    font-family:inherit; font-size:0.78rem; border:none; background:transparent; color:var(--ink-soft);
+    padding:6px 10px; border-radius:2px; cursor:pointer;
+  }
+  .filter-group button.active{ background:var(--accent); color:#fff8ec; }
+
+  main{ max-width:1000px; margin:0 auto; padding:20px; }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-soft);
+  }
+  .empty-state h2{ font-family: Georgia, serif; color:var(--ink); font-size:1.4rem; }
+  .empty-state .btn{ margin-top:14px; }
+
+  #autosave-note{
+    max-width:1000px; margin:10px auto 0; padding:8px 20px;
+    font-size:0.8rem; color:var(--ink-soft); display:none;
+    align-items:center; gap:10px;
+  }
+  #autosave-note.show{ display:flex; }
+
+  .card{
+    position:relative;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:6px;
+    margin-bottom:16px;
+    padding:16px 18px 14px;
+    overflow:hidden;
+  }
+  .card::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:5px;
+    background:var(--pending);
+  }
+  .card[data-status="partial"]::before{ background: linear-gradient(var(--pending), var(--verified)); }
+  .card[data-status="full"]::before{ background:var(--verified); }
+
+  .card-head{
+    display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px; margin-bottom:8px; padding-right:110px;
+  }
+  .card-head .id{ font-size:0.75rem; color:var(--ink-soft); }
+  .card-head .name{ font-size:1.15rem; font-weight:700; }
+  .card-head .brewery{ color:var(--ink-soft); font-size:0.92rem; }
+  .card-meta{
+    display:flex; flex-wrap:wrap; gap:6px 12px; font-size:0.78rem; color:var(--ink-soft); margin-bottom:12px;
+  }
+  .card-meta .badge{
+    border:1px solid var(--line-strong); border-radius:3px; padding:1px 7px;
+  }
+  .card-meta .badge.discontinued{ color:var(--pending); border-color:var(--pending); }
+
+  .stamp{
+    position:absolute; top:14px; right:16px;
+    font-family: Georgia, serif; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+    font-size:0.72rem; color:var(--verified);
+    border:2px solid var(--verified); border-radius:4px; padding:4px 8px;
+    transform: rotate(6deg) scale(0.85); transform-origin:center;
+    opacity:0; transition:opacity 0.25s ease, transform 0.25s ease;
+    pointer-events:none;
+  }
+  .card[data-status="full"] .stamp{ opacity:0.9; transform:rotate(6deg) scale(1); }
+  @media (prefers-reduced-motion: reduce){ .stamp{ transition:none; } }
+
+  .progress-pill{
+    position:absolute; top:16px; right:16px;
+    font-family: ui-monospace, monospace; font-size:0.72rem; color:var(--ink-soft);
+  }
+  .card[data-status="full"] .progress-pill{ display:none; }
+
+  .fields{ display:grid; gap:8px; }
+  .field{ display:flex; gap:10px; align-items:flex-start; padding:6px 0; border-top:1px dashed var(--line); }
+  .field:first-child{ border-top:none; }
+  .field input[type=checkbox]{ margin-top:4px; width:16px; height:16px; accent-color:var(--verified); flex:none; cursor:pointer; }
+  .field-body{ flex:1; min-width:0; }
+  .field-label{
+    display:block; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--ink-soft); margin-bottom:3px;
+  }
+  .field-row{ display:flex; gap:8px; align-items:center; }
+  .field input[type=text], .field select, .field textarea{
+    font-family:inherit; font-size:0.9rem; color:var(--ink); background:transparent;
+    border:1px solid var(--line-strong); border-radius:3px; padding:6px 8px; width:100%;
+  }
+  .field.confirmed input[type=text], .field.confirmed select, .field.confirmed textarea{
+    border-color: color-mix(in srgb, var(--verified) 55%, var(--line-strong));
+  }
+  .field textarea{ resize:vertical; min-height:44px; font-family:inherit; }
+  .field .mono-input{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .url-row a.open-link{
+    font-size:0.78rem; white-space:nowrap; text-decoration:none; border:1px solid var(--line-strong);
+    border-radius:3px; padding:6px 9px; color:var(--ink-soft);
+  }
+  .url-row a.open-link:hover{ color:var(--accent); border-color:var(--accent); }
+
+  .card-actions{
+    display:flex; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line);
+  }
+  .card-actions .btn{ font-size:0.78rem; padding:5px 10px; }
+
+  footer{
+    max-width:1000px; margin:30px auto 60px; padding:0 20px;
+    color:var(--ink-soft); font-size:0.78rem;
+  }
+
+  .visually-hidden{
+    position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <h1 class="display">🍺 Confirmation Desk</h1>
+      <span class="tagline">verify the unverified beer list, one ticket at a time</span>
+    </div>
+    <label class="btn primary" for="file-input">Load list…</label>
+    <input id="file-input" type="file" accept="application/json,.json">
+    <button class="btn" id="export-btn" disabled>Export confirmed list</button>
+    <div class="tally" id="tally" hidden></div>
+  </div>
+</header>
+
+<div id="autosave-note">
+  <span id="autosave-text"></span>
+  <button class="btn subtle" id="discard-autosave">Discard &amp; start over</button>
+</div>
+
+<div class="controls" id="controls" hidden>
+  <input type="search" id="search" placeholder="Filter by name, brewery, style, country…">
+  <div class="filter-group" role="group" aria-label="Filter by confirmation status">
+    <button class="active" data-filter="all">All</button>
+    <button data-filter="unconfirmed">Unconfirmed</button>
+    <button data-filter="partial">In progress</button>
+    <button data-filter="full">Fully confirmed</button>
+  </div>
+</div>
+
+<main id="main">
+  <div class="empty-state" id="empty-state">
+    <h2 class="display">No list loaded</h2>
+    <p>Load a <span class="mono">beers.json</span>-shaped file to start confirming gluten status, ppm,<br>brewery links and notes against a real source.</p>
+    <label class="btn primary" for="file-input">Load list…</label>
+  </div>
+  <div id="list"></div>
+</main>
+
+<footer>
+  Runs entirely in your browser — nothing is uploaded anywhere. Autosaves to this browser's local storage as you go.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var CONFIRMABLE = [
+    { key:"glutenFree",    label:"Gluten-free (naturally)", type:"bool" },
+    { key:"glutenRemoved", label:"Gluten-removed (processed)", type:"bool" },
+    { key:"ppm",           label:"Gluten ppm", type:"text" },
+    { key:"grains",        label:"Grains / ingredients", type:"list" },
+    { key:"note",          label:"Tasting note", type:"textarea" },
+    { key:"breweryUrl",    label:"Brewery URL", type:"url" }
+  ];
+  var FIELD_ORDER = ["id","name","brewery","country","style","abv","ibu","ppm",
+    "glutenFree","glutenRemoved","discontinued","grains","note","breweryUrl","confirmed"];
+  var STORAGE_KEY = "confirm-beers:autosave";
+
+  var beers = [];
+  var searchTerm = "";
+  var statusFilter = "all";
+
+  var listEl = document.getElementById("list");
+  var emptyStateEl = document.getElementById("empty-state");
+  var controlsEl = document.getElementById("controls");
+  var tallyEl = document.getElementById("tally");
+  var exportBtn = document.getElementById("export-btn");
+  var fileInput = document.getElementById("file-input");
+  var searchInput = document.getElementById("search");
+  var autosaveNote = document.getElementById("autosave-note");
+  var autosaveText = document.getElementById("autosave-text");
+
+  function escapeHtml(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  function confirmableCount(){ return CONFIRMABLE.length; }
+
+  function statusOf(beer){
+    var n = (beer.confirmed || []).length;
+    if (n === 0) return "unconfirmed";
+    if (n >= confirmableCount()) return "full";
+    return "partial";
+  }
+
+  function cardStatusAttr(beer){
+    var s = statusOf(beer);
+    return s === "unconfirmed" ? "none" : s;
+  }
+
+  function fieldControl(beer, field){
+    var val = beer[field.key];
+    if (field.type === "bool"){
+      return (
+        '<select class="field-value" data-key="' + field.key + '">' +
+          '<option value="true"' + (val === true ? " selected" : "") + '>Yes</option>' +
+          '<option value="false"' + (val === false ? " selected" : "") + '>No</option>' +
+        '</select>'
+      );
+    }
+    if (field.type === "list"){
+      var joined = Array.isArray(val) ? val.join(", ") : "";
+      return '<input type="text" class="field-value" data-key="' + field.key + '" value="' + escapeHtml(joined) + '">';
+    }
+    if (field.type === "textarea"){
+      return '<textarea class="field-value" data-key="' + field.key + '">' + escapeHtml(val || "") + '</textarea>';
+    }
+    if (field.type === "url"){
+      var v = escapeHtml(val || "");
+      return (
+        '<div class="field-row url-row">' +
+          '<input type="text" class="field-value mono-input" data-key="' + field.key + '" value="' + v + '">' +
+          (val ? '<a class="open-link" href="' + v + '" target="_blank" rel="noopener noreferrer">Open ↗</a>' : "") +
+        '</div>'
+      );
+    }
+    return '<input type="text" class="field-value mono-input" data-key="' + field.key + '" value="' + escapeHtml(val || "") + '">';
+  }
+
+  function cardHtml(beer, index){
+    var confirmed = beer.confirmed || [];
+    var fieldsHtml = CONFIRMABLE.map(function(field){
+      var isConfirmed = confirmed.indexOf(field.key) !== -1;
+      return (
+        '<div class="field' + (isConfirmed ? " confirmed" : "") + '" data-key="' + field.key + '">' +
+          '<input type="checkbox" class="field-confirm" data-key="' + field.key + '"' + (isConfirmed ? " checked" : "") +
+            ' aria-label="Mark ' + escapeHtml(field.label) + ' as confirmed">' +
+          '<div class="field-body">' +
+            '<span class="field-label">' + escapeHtml(field.label) + '</span>' +
+            fieldControl(beer, field) +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+
+    var metaBits = [];
+    metaBits.push('<span class="badge">' + escapeHtml(beer.country || "—") + '</span>');
+    metaBits.push('<span class="badge">' + escapeHtml(beer.style || "—") + '</span>');
+    if (beer.abv != null) metaBits.push('<span class="badge mono">' + beer.abv + '% ABV</span>');
+    if (beer.ibu != null) metaBits.push('<span class="badge mono">' + beer.ibu + ' IBU</span>');
+    if (beer.discontinued) metaBits.push('<span class="badge discontinued">Discontinued</span>');
+
+    return (
+      '<article class="card" data-index="' + index + '" data-status="' + cardStatusAttr(beer) + '" ' +
+        'data-search="' + escapeHtml(((beer.name||"") + " " + (beer.brewery||"") + " " + (beer.style||"") + " " + (beer.country||"")).toLowerCase()) + '">' +
+        '<div class="progress-pill">' + confirmed.length + ' / ' + confirmableCount() + '</div>' +
+        '<div class="stamp">Verified</div>' +
+        '<div class="card-head">' +
+          '<span class="id mono">#' + beer.id + '</span>' +
+          '<span class="name display">' + escapeHtml(beer.name || "Unnamed") + '</span>' +
+          '<span class="brewery">' + escapeHtml(beer.brewery || "") + '</span>' +
+        '</div>' +
+        '<div class="card-meta">' + metaBits.join("") + '</div>' +
+        '<div class="fields">' + fieldsHtml + '</div>' +
+        '<div class="card-actions">' +
+          '<button class="btn" data-action="confirm-all">Confirm all</button>' +
+          '<button class="btn subtle" data-action="reset">Reset</button>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  function render(){
+    var hasBeers = beers.length > 0;
+    emptyStateEl.style.display = hasBeers ? "none" : "";
+    controlsEl.hidden = !hasBeers;
+    tallyEl.hidden = !hasBeers;
+    exportBtn.disabled = !hasBeers;
+    listEl.innerHTML = hasBeers ? beers.map(cardHtml).join("") : "";
+    filterCards();
+    updateTally();
+  }
+
+  function updateTally(){
+    if (!beers.length){ tallyEl.hidden = true; return; }
+    var full = beers.filter(function(b){ return statusOf(b) === "full"; }).length;
+    tallyEl.hidden = false;
+    tallyEl.innerHTML = '<strong>' + beers.length + '</strong> beers &middot; ' +
+      '<span class="verified-count">' + full + '</span> fully confirmed';
+  }
+
+  function filterCards(){
+    var cards = listEl.querySelectorAll(".card");
+    cards.forEach(function(card){
+      var matchesSearch = !searchTerm || card.dataset.search.indexOf(searchTerm) !== -1;
+      var status = card.dataset.status; // none | partial | full
+      var matchesFilter = statusFilter === "all" ||
+        (statusFilter === "unconfirmed" && status === "none") ||
+        (statusFilter === "partial" && status === "partial") ||
+        (statusFilter === "full" && status === "full");
+      card.style.display = (matchesSearch && matchesFilter) ? "" : "none";
+    });
+  }
+
+  function updateCard(card, beer){
+    card.dataset.status = cardStatusAttr(beer);
+    card.querySelector(".progress-pill").textContent = (beer.confirmed || []).length + " / " + confirmableCount();
+    filterCards();
+    updateTally();
+    autosave();
+  }
+
+  function setConfirmed(beer, key, isConfirmed){
+    beer.confirmed = beer.confirmed || [];
+    var i = beer.confirmed.indexOf(key);
+    if (isConfirmed && i === -1) beer.confirmed.push(key);
+    if (!isConfirmed && i !== -1) beer.confirmed.splice(i, 1);
+  }
+
+  function parseFieldValue(field, raw){
+    if (field.type === "bool") return raw === "true";
+    if (field.type === "list") return raw.split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+    return raw;
+  }
+
+  listEl.addEventListener("change", function(e){
+    var card = e.target.closest(".card");
+    if (!card) return;
+    var index = Number(card.dataset.index);
+    var beer = beers[index];
+
+    if (e.target.classList.contains("field-confirm")){
+      setConfirmed(beer, e.target.dataset.key, e.target.checked);
+      var fieldRow = e.target.closest(".field");
+      fieldRow.classList.toggle("confirmed", e.target.checked);
+      updateCard(card, beer);
+      return;
+    }
+
+    if (e.target.classList.contains("field-value")){
+      var key = e.target.dataset.key;
+      var field = CONFIRMABLE.filter(function(f){ return f.key === key; })[0];
+      beer[key] = parseFieldValue(field, e.target.value);
+      if (field.type === "url"){
+        var link = e.target.closest(".url-row").querySelector(".open-link");
+        if (link) link.href = e.target.value;
+      }
+      card.dataset.search = ((beer.name||"") + " " + (beer.brewery||"") + " " + (beer.style||"") + " " + (beer.country||"")).toLowerCase();
+      autosave();
+    }
+  });
+
+  listEl.addEventListener("click", function(e){
+    var actionBtn = e.target.closest("[data-action]");
+    if (!actionBtn) return;
+    var card = actionBtn.closest(".card");
+    var index = Number(card.dataset.index);
+    var beer = beers[index];
+
+    if (actionBtn.dataset.action === "confirm-all"){
+      beer.confirmed = CONFIRMABLE.map(function(f){ return f.key; });
+    } else if (actionBtn.dataset.action === "reset"){
+      beer.confirmed = [];
+    }
+    card.querySelectorAll(".field").forEach(function(fieldEl){
+      var isConfirmed = beer.confirmed.indexOf(fieldEl.dataset.key) !== -1;
+      fieldEl.classList.toggle("confirmed", isConfirmed);
+      fieldEl.querySelector(".field-confirm").checked = isConfirmed;
+    });
+    updateCard(card, beer);
+  });
+
+  searchInput.addEventListener("input", function(e){
+    searchTerm = e.target.value.trim().toLowerCase();
+    filterCards();
+  });
+
+  document.querySelectorAll(".filter-group button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".filter-group button").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      statusFilter = btn.dataset.filter;
+      filterCards();
+    });
+  });
+
+  function orderedBeer(beer){
+    var out = {};
+    FIELD_ORDER.forEach(function(key){
+      if (key === "confirmed"){
+        out.confirmed = beer.confirmed || [];
+      } else if (Object.prototype.hasOwnProperty.call(beer, key)){
+        out[key] = beer[key];
+      }
+    });
+    Object.keys(beer).forEach(function(key){
+      if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = beer[key];
+    });
+    return out;
+  }
+
+  function exportJson(){
+    var lines = beers.map(function(b){ return JSON.stringify(orderedBeer(b)); });
+    return "[\n" + lines.map(function(l){ return "  " + l; }).join(",\n") + "\n]\n";
+  }
+
+  exportBtn.addEventListener("click", function(){
+    var blob = new Blob([exportJson()], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "beers.confirmed.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  function loadBeers(data, opts){
+    opts = opts || {};
+    if (!Array.isArray(data)) throw new Error("Expected a JSON array of beers.");
+    beers = data.map(function(b){
+      return Object.assign({}, b, { confirmed: Array.isArray(b.confirmed) ? b.confirmed.slice() : [] });
+    });
+    render();
+    if (!opts.skipAutosave) autosave();
+  }
+
+  fileInput.addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var hasProgress = beers.some(function(b){ return (b.confirmed || []).length > 0; });
+    if (hasProgress && !confirm("Loading a new file will discard unsaved progress in the current session. Continue?")){
+      fileInput.value = "";
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      try{
+        var data = JSON.parse(evt.target.result);
+        loadBeers(data);
+        autosaveNote.classList.remove("show");
+      } catch(err){
+        alert("Could not parse that file as JSON: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    fileInput.value = "";
+  });
+
+  function autosave(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), beers: beers }));
+    } catch(err){ /* storage unavailable or full — silently skip autosave */ }
+  }
+
+  document.getElementById("discard-autosave").addEventListener("click", function(){
+    localStorage.removeItem(STORAGE_KEY);
+    autosaveNote.classList.remove("show");
+    beers = [];
+    render();
+  });
+
+  (function restoreAutosave(){
+    var raw;
+    try{ raw = localStorage.getItem(STORAGE_KEY); } catch(err){ return; }
+    if (!raw) return;
+    try{
+      var saved = JSON.parse(raw);
+      if (!saved.beers || !saved.beers.length) return;
+      loadBeers(saved.beers, { skipAutosave:true });
+      var when = new Date(saved.savedAt).toLocaleString();
+      autosaveText.textContent = "Restored autosaved session from " + when + ".";
+      autosaveNote.classList.add("show");
+    } catch(err){ /* ignore corrupt autosave */ }
+  })();
+})();
+</script>
+</body>
+</html>

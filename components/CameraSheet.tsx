@@ -1,5 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radii, spacing } from '../lib/theme';
+import { fonts, radii, spacing, useStyles, type Palette } from '../lib/theme';
 
 export function CameraSheet({
   visible,
@@ -12,6 +12,7 @@ export function CameraSheet({
   onScanCan: () => void;
   onScanMenu: () => void;
 }) {
+  const styles = useStyles(makeStyles);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
@@ -19,7 +20,7 @@ export function CameraSheet({
           <View style={styles.handle} />
           <Text style={styles.heading}>Scan with camera</Text>
 
-          <Pressable style={[styles.row, styles.rowDivider]} onPress={onScanCan}>
+          <Pressable style={[styles.row, styles.rowDivider]} onPress={onScanCan} accessibilityRole="button">
             <View style={styles.iconChip}>
               <View style={styles.canGlyph} />
             </View>
@@ -29,7 +30,7 @@ export function CameraSheet({
             </View>
           </Pressable>
 
-          <Pressable style={styles.row} onPress={onScanMenu}>
+          <Pressable style={styles.row} onPress={onScanMenu} accessibilityRole="button">
             <View style={styles.iconChip}>
               <View style={styles.menuGlyph}>
                 <View style={styles.menuLine} />
@@ -48,10 +49,10 @@ export function CameraSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
     paddingHorizontal: spacing(4.5),

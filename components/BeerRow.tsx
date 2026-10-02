@@ -1,22 +1,27 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Beer } from '../lib/db';
-import { STATUS_META } from '../lib/status';
-import { colors, fonts, radii, spacing } from '../lib/theme';
+import { useStatusMeta } from '../lib/status';
+import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 import { DiscontinuedBadge } from './DiscontinuedBadge';
 import { StatusBadge } from './StatusBadge';
 
-export function BeerRow({
+// Memoized, with id-taking callbacks so the parent can pass stable handlers:
+// rows whose beer is unchanged skip re-rendering when the list is filtered.
+export const BeerRow = memo(function BeerRow({
   beer,
   onPress,
   onToggleFavorite,
 }: {
   beer: Beer;
-  onPress: () => void;
-  onToggleFavorite: () => void;
+  onPress: (id: number) => void;
+  onToggleFavorite: (id: number) => void;
 }) {
-  const meta = STATUS_META[beer.status];
+  const meta = useStatusMeta(beer.status);
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   return (
-    <Pressable style={styles.row} onPress={onPress}>
+    <Pressable style={styles.row} onPress={() => onPress(beer.id)} accessibilityRole="button">
       <View style={[styles.dot, { backgroundColor: meta.dot }]} />
       <View style={styles.textCol}>
         <Text style={styles.name} numberOfLines={1}>
@@ -28,7 +33,13 @@ export function BeerRow({
       </View>
       {beer.discontinued ? <DiscontinuedBadge /> : null}
       <StatusBadge status={beer.status} />
-      <Pressable onPress={onToggleFavorite} hitSlop={8} style={styles.favButton}>
+      <Pressable
+        onPress={() => onToggleFavorite(beer.id)}
+        hitSlop={8}
+        style={styles.favButton}
+        accessibilityRole="button"
+        accessibilityLabel={beer.favorite ? 'Remove from favorites' : 'Add to favorites'}
+      >
         <Text
           allowFontScaling={false}
           style={[styles.fav, { color: beer.favorite ? colors.favActive : colors.favInactive }]}
@@ -38,14 +49,14 @@ export function BeerRow({
       </Pressable>
     </Pressable>
   );
-}
+});
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing(2.75),
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.lg - 1,

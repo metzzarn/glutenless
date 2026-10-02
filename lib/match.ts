@@ -82,18 +82,3 @@ export function matchBeersInMenuText(text: string, beers: Beer[]): Beer[] {
     return !!token && occursNear(lines, name, token, 2);
   });
 }
-
-/**
- * Placeholder barcode lookup: without a real UPC/EAN -> beer database, we
- * deterministically map a scanned barcode to one of our local beers (same
- * barcode always resolves to the same beer). Swap for a real lookup once a
- * barcode dataset/service is wired up.
- */
-export function matchBeerByBarcode(barcode: string, beers: Beer[]): Beer | null {
-  if (!barcode || beers.length === 0) return null;
-  let hash = 0;
-  for (let i = 0; i < barcode.length; i++) {
-    hash = (hash * 31 + barcode.charCodeAt(i)) >>> 0;
-  }
-  return beers[hash % beers.length];
-}

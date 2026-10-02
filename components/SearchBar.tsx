@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, fonts, radii, spacing } from '../lib/theme';
+import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
 export function SearchBar({
   value,
@@ -12,25 +12,45 @@ export function SearchBar({
   onMicPress: () => void;
   onCameraPress: () => void;
 }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <View style={styles.wrap}>
       <View style={styles.searchGlyph} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder="Search beers or breweries"
+        placeholder="Search beer, brewery, style…"
         placeholderTextColor={colors.textMuted}
         style={styles.input}
       />
       {value.length > 0 ? (
-        <Pressable onPress={() => onChangeText('')} hitSlop={8} style={styles.clearButton}>
+        <Pressable
+          onPress={() => onChangeText('')}
+          hitSlop={8}
+          style={styles.clearButton}
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+        >
           <Text style={styles.clearGlyph}>×</Text>
         </Pressable>
       ) : null}
-      <Pressable style={styles.iconButton} onPress={onMicPress} hitSlop={8}>
+      <Pressable
+        style={styles.iconButton}
+        onPress={onMicPress}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Search by voice"
+      >
         <View style={styles.micGlyph} />
       </Pressable>
-      <Pressable style={styles.iconButton} onPress={onCameraPress} hitSlop={8}>
+      <Pressable
+        style={styles.iconButton}
+        onPress={onCameraPress}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Scan with camera"
+      >
         <View style={styles.cameraGlyph}>
           <View style={styles.cameraLens} />
         </View>
@@ -39,12 +59,12 @@ export function SearchBar({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing(2),
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderLight,
     borderRadius: radii.lg - 2,

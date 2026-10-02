@@ -1,7 +1,9 @@
 import Constants from 'expo-constants';
-import { upsertBeers, type Beer } from './db';
+import { Storage } from 'expo-sqlite/kv-store';
+import { getLocalVersion, isNewerVersion, setLocalVersion } from './dataVersion';
+import { listBeers, upsertBeers, type Beer, type BeerData } from './db';
 
-type RemoteBeer = Omit<Beer, 'favorite' | 'status'>;
+type RemoteBeer = BeerData;
 
 const REQUIRED_KEYS: (keyof RemoteBeer)[] = [
   'id',
@@ -43,6 +45,34 @@ function validateRemoteBeers(data: unknown): ValidationResult {
 
 const SYNC_TIMEOUT_MS = 5000;
 
+/** When the list last came from the server, and how many beers that update added, removed or changed. */
+export type LastSync = { at: string; changes: number };
+
+const LAST_SYNC_KEY = 'lastSync';
+
+export function getLastSync(): LastSync | null {
+  try {
+    const stored = Storage.getItemSync(LAST_SYNC_KEY);
+    return stored ? (JSON.parse(stored) as LastSync) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Beers added, removed, or with any dataset field changed between the local list and an incoming one. */
+export function countChanges(current: Beer[], incoming: RemoteBeer[]): number {
+  const fields = [...REQUIRED_KEYS, 'confirmed'] as (keyof RemoteBeer)[];
+  const fingerprint = (b: RemoteBeer) => JSON.stringify(fields.map((f) => b[f] ?? null));
+  const currentById = new Map(current.map((b) => [b.id, fingerprint(b)]));
+  const incomingIds = new Set(incoming.map((b) => b.id));
+
+  let changes = current.filter((b) => !incomingIds.has(b.id)).length;
+  for (const b of incoming) {
+    if (currentById.get(b.id) !== fingerprint(b)) changes++;
+  }
+  return changes;
+}
+
 /**
  * Fetches the full beer list from the hosted data/beers.json (served
  * straight from raw.githubusercontent.com — real HTTPS, no server process to
@@ -52,10 +82,18 @@ const SYNC_TIMEOUT_MS = 5000;
  * a timeout just means the app keeps running on whatever's already in
  * SQLite.
  */
+function recordSync(changes: number) {
+  try {
+    Storage.setItemSync(LAST_SYNC_KEY, JSON.stringify({ at: new Date().toISOString(), changes }));
+  } catch {
+    // Only the "updated …" label depends on this.
+  }
+}
+
 export async function syncFromServer(): Promise<boolean> {
-  const beersUrl = Constants.expoConfig?.extra?.beersUrl;
-  if (typeof beersUrl !== 'string' || !beersUrl) {
-    console.warn('[sync] no extra.beersUrl configured in app.json — skipping sync');
+  const { beersUrl, beersVersionUrl } = Constants.expoConfig?.extra ?? {};
+  if (typeof beersUrl !== 'string' || !beersUrl || typeof beersVersionUrl !== 'string' || !beersVersionUrl) {
+    console.warn('[sync] extra.beersUrl or extra.beersVersionUrl missing from app.json — skipping sync');
     return false;
   }
 
@@ -63,7 +101,26 @@ export async function syncFromServer(): Promise<boolean> {
   const timeout = setTimeout(() => controller.abort(), SYNC_TIMEOUT_MS);
 
   try {
-    const res = await fetch(beersUrl, { signal: controller.signal });
+    // The small version stamp first: the list itself is only downloaded when
+    // it's newer than what's already here, so unpublished local edits to
+    // data/beers.json (or a newer app bundle) are never replaced by older data.
+    const versionRes = await fetch(beersVersionUrl, { signal: controller.signal });
+    if (!versionRes.ok) {
+      console.warn(`[sync] ${beersVersionUrl} responded ${versionRes.status} ${versionRes.statusText}`);
+      return false;
+    }
+    const remoteVersion = ((await versionRes.json()) as { updatedAt?: unknown })?.updatedAt;
+    if (typeof remoteVersion !== 'string' || Number.isNaN(Date.parse(remoteVersion))) {
+      console.warn(`[sync] ${beersVersionUrl} has no valid updatedAt`);
+      return false;
+    }
+    if (!isNewerVersion(remoteVersion, getLocalVersion())) {
+      recordSync(0);
+      return true;
+    }
+
+    // The version in the query gets past CDN caching, so a fresh stamp can't come with a stale list.
+    const res = await fetch(`${beersUrl}?v=${encodeURIComponent(remoteVersion)}`, { signal: controller.signal });
     if (!res.ok) {
       console.warn(`[sync] ${beersUrl} responded ${res.status} ${res.statusText}`);
       return false;
@@ -76,7 +133,11 @@ export async function syncFromServer(): Promise<boolean> {
       return false;
     }
 
-    await upsertBeers(data as RemoteBeer[]);
+    const incoming = data as RemoteBeer[];
+    const changes = countChanges(await listBeers(), incoming);
+    await upsertBeers(incoming);
+    setLocalVersion(remoteVersion);
+    recordSync(changes);
     return true;
   } catch (err) {
     console.warn(`[sync] failed to fetch ${beersUrl}:`, err);

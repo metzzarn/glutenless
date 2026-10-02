@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { STATUS_META, type GlutenStatus } from '../lib/status';
-import { colors, fonts, radii, spacing } from '../lib/theme';
+import { useStatusMeta, type GlutenStatus } from '../lib/status';
+import { fonts, radii, spacing, useStyles, type Palette } from '../lib/theme';
 
 export function GlutenStatusBox({
   status,
@@ -14,7 +14,8 @@ export function GlutenStatusBox({
   /** Whether this beer's gluten-free/gluten-removed claim has been checked against a primary source. */
   confirmed?: boolean;
 }) {
-  const meta = STATUS_META[status];
+  const meta = useStatusMeta(status);
+  const styles = useStyles(makeStyles);
   return (
     <View style={[styles.box, { backgroundColor: meta.bg }]}>
       <View style={styles.header}>
@@ -34,7 +35,7 @@ export function GlutenStatusBox({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   box: { borderRadius: radii.lg, padding: spacing(4) },
   header: {
     flexDirection: 'row',

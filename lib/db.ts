@@ -1,5 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import beersSeed from '../data/beers.json';
+import { BUNDLED_VERSION, getLocalVersion, isNewerVersion, setLocalVersion } from './dataVersion';
+import { searchBeers } from './search';
 import { statusFromFlags, type FilterKey, type GlutenStatus } from './status';
 
 export type Beer = {
@@ -21,7 +23,12 @@ export type Beer = {
   /** Field names from CONFIRMABLE (e.g. "glutenFree", "ppm") a human has verified against a primary source. */
   confirmed?: string[];
   favorite: boolean;
+  /** The user's own note ("Sold at the corner shop"); local only, never touched by seeding or sync. */
+  personalNote: string;
 };
+
+/** The dataset's fields: everything except what's derived (status) or belongs to the user. */
+export type BeerData = Omit<Beer, 'favorite' | 'status' | 'personalNote'>;
 
 type BeerRow = Omit<Beer, 'favorite' | 'glutenFree' | 'glutenRemoved' | 'discontinued' | 'grains' | 'confirmed'> & {
   favorite: number;
@@ -39,7 +46,7 @@ const rowToBeer = (row: BeerRow): Beer => ({
   glutenRemoved: !!row.glutenRemoved,
   discontinued: !!row.discontinued,
   grains: JSON.parse(row.grains) as string[],
-  confirmed: JSON.parse(row.confirmed || '[]') as string[],
+  confirmed: JSON.parse(row.confirmed) as string[],
 });
 
 let dbPromise: ReturnType<typeof SQLite.openDatabaseAsync> | null = null;
@@ -68,12 +75,14 @@ const TABLE_COLUMNS_DDL = `
   note TEXT NOT NULL,
   breweryUrl TEXT NOT NULL DEFAULT '',
   confirmed TEXT NOT NULL DEFAULT '[]',
-  favorite INTEGER NOT NULL DEFAULT 0
+  favorite INTEGER NOT NULL DEFAULT 0,
+  personalNote TEXT NOT NULL DEFAULT ''
 `;
 
 const CANONICAL_COLUMNS = [
   'id', 'name', 'brewery', 'style', 'abv', 'ibu', 'status', 'ppm',
   'glutenFree', 'glutenRemoved', 'discontinued', 'country', 'grains', 'note', 'breweryUrl', 'confirmed', 'favorite',
+  'personalNote',
 ];
 
 /**
@@ -86,7 +95,8 @@ const CANONICAL_COLUMNS = [
  * The seed upsert right after this fills in real values for any column that
  * only got a placeholder default from the copy.
  */
-async function migrateSchema(db: SQLite.SQLiteDatabase): Promise<void> {
+/** Returns whether the table was rebuilt. */
+async function migrateSchema(db: SQLite.SQLiteDatabase): Promise<boolean> {
   const existing = await db.getAllAsync<{ name: string; notnull: number }>(
     'PRAGMA table_info(beers)'
   );
@@ -94,19 +104,21 @@ async function migrateSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   const ibuIsNotNull = existing.find((c) => c.name === 'ibu')?.notnull === 1;
   const missingColumns = CANONICAL_COLUMNS.some((name) => !existingNames.has(name));
 
-  if (!missingColumns && !ibuIsNotNull) return;
+  if (!missingColumns && !ibuIsNotNull) return false;
 
   const copyColumns = CANONICAL_COLUMNS.filter((name) => existingNames.has(name)).join(', ');
-  await db.execAsync('DROP TABLE beers_new;');
+  // IF EXISTS: it only exists if an earlier rebuild was interrupted.
+  await db.execAsync('DROP TABLE IF EXISTS beers_new;');
   await db.execAsync(`CREATE TABLE beers_new (${TABLE_COLUMNS_DDL});`);
   await db.execAsync(`INSERT INTO beers_new (${copyColumns}) SELECT ${copyColumns} FROM beers;`);
   await db.execAsync('DROP TABLE beers;');
   await db.execAsync('ALTER TABLE beers_new RENAME TO beers;');
+  return true;
 }
 
 /**
- * Upserts a full batch of beers by id and never touches `favorite`, so an
- * update never wipes out anything the user has already favorited. Gluten
+ * Upserts a full batch of beers by id and never touches `favorite` or
+ * `personalNote`, so an update never wipes out anything the user has added. Gluten
  * status isn't carried on the input — it's derived from glutenFree so the
  * two can't drift. Treats `beers` as the complete authoritative set: any
  * existing row whose id isn't in it gets deleted, so a beer removed from the
@@ -114,7 +126,7 @@ async function migrateSchema(db: SQLite.SQLiteDatabase): Promise<void> {
  * orphan. Shared by the bundled-JSON seed (`initDb`) and server sync
  * (`lib/sync.ts`) so both go through identical upsert logic.
  */
-export async function upsertBeers(beers: Omit<Beer, 'favorite' | 'status'>[]): Promise<void> {
+export async function upsertBeers(beers: BeerData[]): Promise<void> {
   const db = await getDb();
   for (const b of beers) {
     const status = statusFromFlags(b.glutenFree);
@@ -170,11 +182,17 @@ export async function upsertBeers(beers: Omit<Beer, 'favorite' | 'status'>[]): P
 export async function initDb(): Promise<void> {
   const db = await getDb();
   await db.execAsync(`CREATE TABLE IF NOT EXISTS beers (${TABLE_COLUMNS_DDL});`);
-  await migrateSchema(db);
+  const rebuilt = await migrateSchema(db);
 
-  // Re-run on every launch so dataset edits (data/beers.json) show up without
-  // a reinstall.
-  await upsertBeers(beersSeed as Omit<Beer, 'favorite' | 'status'>[]);
+  // Seed from the bundled list only when it's newer than what's stored (a
+  // fresh install, an app update, or local edits to data/beers.json), so a
+  // relaunch doesn't replace newer synced data with the older bundled copy.
+  // A rebuilt table needs it too, to fill new columns with real values.
+  const count = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM beers');
+  if (rebuilt || !count?.count || isNewerVersion(BUNDLED_VERSION, getLocalVersion())) {
+    await upsertBeers(beersSeed as BeerData[]);
+    setLocalVersion(BUNDLED_VERSION);
+  }
 }
 
 /** Pure helper (no db access) so it's testable head-on: builds the WHERE clause + params for listBeers. */
@@ -199,6 +217,7 @@ export function buildSearchClause(
   return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
 }
 
+/** Sorted by name ignoring case, with discontinued beers after everything still on sale. */
 export async function listBeers(
   filter: FilterKey = 'all',
   query = ''
@@ -206,10 +225,22 @@ export async function listBeers(
   const db = await getDb();
   const { where, params } = buildSearchClause(filter, query);
   const rows = await db.getAllAsync<BeerRow>(
-    `SELECT * FROM beers ${where} ORDER BY name ASC`,
+    `SELECT * FROM beers ${where} ORDER BY discontinued ASC, name COLLATE NOCASE ASC`,
     params
   );
   return rows.map(rowToBeer);
+}
+
+/**
+ * Filters an already-loaded list by tab, then by search (see lib/search.ts),
+ * without a db round trip. Broader than buildSearchClause: it also matches
+ * style, country and the personal note, and tolerates typos.
+ */
+export function filterBeers(beers: Beer[], filter: FilterKey, query: string): Beer[] {
+  const inTab = beers.filter((b) =>
+    filter === 'favorite' ? b.favorite : filter === 'all' || b.status === filter
+  );
+  return searchBeers(inTab, query);
 }
 
 export async function getBeerById(id: number): Promise<Beer | null> {
@@ -226,4 +257,9 @@ export async function toggleFavorite(id: number): Promise<boolean> {
     [id]
   );
   return !!row?.favorite;
+}
+
+export async function setPersonalNote(id: number, note: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('UPDATE beers SET personalNote = ? WHERE id = ?', [note.trim(), id]);
 }

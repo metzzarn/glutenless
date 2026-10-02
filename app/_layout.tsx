@@ -6,12 +6,17 @@ import {
   NunitoSans_800ExtraBold,
 } from '@expo-google-fonts/nunito-sans';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { initDb } from '../lib/db';
-import { colors } from '../lib/theme';
+import { useColors, useStyles, type Palette } from '../lib/theme';
+import { loadThemePreference } from '../lib/themePreference';
+
+// Before the first render, so a saved light/dark choice never flashes the other theme.
+loadThemePreference();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -23,6 +28,8 @@ export default function RootLayout() {
     NunitoSans_800ExtraBold,
   });
   const [dbReady, setDbReady] = useState(false);
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
 
   useEffect(() => {
     initDb().then(() => setDbReady(true));
@@ -39,6 +46,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <StatusBar style="auto" />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="camera" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
@@ -50,6 +58,6 @@ export default function RootLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
 });

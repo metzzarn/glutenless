@@ -5,18 +5,20 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listBeers } from '../lib/db';
 import { analyzeCanPhoto, analyzeMenuPhoto } from '../lib/ocr';
-import { colors, fonts, spacing } from '../lib/theme';
+import { fonts, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
 export default function CameraScreen() {
   const { mode } = useLocalSearchParams<{ mode: 'can' | 'menu' }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const cameraRef = useRef<CameraView>(null);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [ready, setReady] = useState(false);
   const [detecting, setDetecting] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ title: string; body: string } | null>(null);
 
   useEffect(() => {
     if (permission && !permission.granted && permission.canAskAgain) {
@@ -32,13 +34,17 @@ export default function CameraScreen() {
     if (!photo?.uri) return;
 
     setDetecting(true);
+    setNotice(null);
     const beers = await listBeers('all', '');
 
     if (mode === 'menu') {
       const matches = await analyzeMenuPhoto(photo.uri, beers);
       setDetecting(false);
       if (matches.length === 0) {
-        setNotice('No beers from the local list were recognized on that menu.');
+        setNotice({
+          title: 'No gluten-free beers found',
+          body: "None of the beers we could read on this menu are in our gluten-free list. Assume they contain gluten, or ask the staff.",
+        });
         return;
       }
       router.replace({
@@ -49,7 +55,10 @@ export default function CameraScreen() {
       const match = await analyzeCanPhoto(photo.uri, beers);
       setDetecting(false);
       if (!match) {
-        setNotice("Couldn't match that can/bottle to a beer in the local list.");
+        setNotice({
+          title: 'Not in our gluten-free list',
+          body: "We couldn't match this to a gluten-free or gluten-removed beer. Assume it contains gluten unless you can confirm otherwise. You can also try searching by name.",
+        });
         return;
       }
       router.replace({ pathname: '/beer/[id]', params: { id: String(match.id), viaPhoto: '1' } });
@@ -64,7 +73,7 @@ export default function CameraScreen() {
         <Text style={styles.permissionText}>
           Camera access is needed to scan a beer or menu.
         </Text>
-        <Pressable style={styles.permissionButton} onPress={requestPermission}>
+        <Pressable style={styles.permissionButton} onPress={requestPermission} accessibilityRole="button">
           <Text style={styles.permissionButtonText}>Grant camera access</Text>
         </Pressable>
         <Pressable onPress={close} style={{ marginTop: spacing(4) }}>
@@ -77,7 +86,12 @@ export default function CameraScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.topBar, { paddingTop: insets.top + spacing(2) }]}>
-        <Pressable style={styles.closeButton} onPress={close}>
+        <Pressable
+          style={styles.closeButton}
+          onPress={close}
+          accessibilityRole="button"
+          accessibilityLabel="Close camera"
+        >
           <Text style={styles.closeGlyph}>×</Text>
         </Pressable>
       </View>
@@ -96,8 +110,9 @@ export default function CameraScreen() {
       </View>
 
       {notice ? (
-        <View style={styles.noticeWrap}>
-          <Text style={styles.noticeText}>{notice}</Text>
+        <View style={styles.noticeWrap} accessibilityRole="alert">
+          <Text style={styles.noticeTitle}>{notice.title}</Text>
+          <Text style={styles.noticeText}>{notice.body}</Text>
         </View>
       ) : null}
 
@@ -106,6 +121,8 @@ export default function CameraScreen() {
           style={[styles.shutter, detecting && styles.shutterDisabled]}
           onPress={takePhoto}
           disabled={detecting || !ready}
+          accessibilityRole="button"
+          accessibilityLabel="Take photo"
         />
         {detecting ? <Text style={styles.detectingText}>Analyzing photo…</Text> : null}
       </View>
@@ -113,7 +130,7 @@ export default function CameraScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cameraBg },
   centered: { alignItems: 'center', justifyContent: 'center', padding: spacing(7) },
   topBar: { paddingHorizontal: spacing(4) },
@@ -140,8 +157,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing(5),
   },
-  noticeWrap: { paddingHorizontal: spacing(6), paddingBottom: spacing(2) },
-  noticeText: { color: colors.white, fontSize: 13, textAlign: 'center', fontFamily: fonts.sans },
+  // A warning, not a neutral "no result": an unrecognised beer must not read as safe.
+  noticeWrap: {
+    marginHorizontal: spacing(5),
+    marginBottom: spacing(2),
+    padding: spacing(3.5),
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E0AE2A',
+    backgroundColor: 'rgba(224,174,42,0.14)',
+    gap: spacing(1),
+  },
+  noticeTitle: { color: '#F2CC7A', fontSize: 14.5, fontFamily: fonts.sansExtraBold },
+  noticeText: { color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 18, fontFamily: fonts.sans },
   shutterWrap: { alignItems: 'center', paddingVertical: spacing(5.5), gap: spacing(2.5) },
   shutter: {
     width: 66,
@@ -166,6 +194,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(3),
     borderRadius: 12,
   },
-  permissionButtonText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 14 },
+  permissionButtonText: { color: colors.onBrand, fontFamily: fonts.sansBold, fontSize: 14 },
   cancelText: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: 13 },
 });

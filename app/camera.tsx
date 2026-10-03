@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listBeers } from '../lib/db';
-import { analyzeCanPhoto, analyzeMenuPhoto } from '../lib/ocr';
+import { scanPhoto } from '../lib/ocr';
+import { setLastScan, setScanDebugEnabled, useScanDebugEnabled } from '../lib/scanDebug';
 import { fonts, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
 export default function CameraScreen() {
@@ -19,6 +20,7 @@ export default function CameraScreen() {
   const [ready, setReady] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [notice, setNotice] = useState<{ title: string; body: string } | null>(null);
+  const debug = useScanDebugEnabled();
 
   useEffect(() => {
     if (permission && !permission.granted && permission.canAskAgain) {
@@ -36,10 +38,24 @@ export default function CameraScreen() {
     setDetecting(true);
     setNotice(null);
     const beers = await listBeers('all', '');
+    const scanMode = mode === 'menu' ? 'menu' : 'can';
+    const started = Date.now();
+    const scan = await scanPhoto(photo.uri, scanMode, beers);
+    setDetecting(false);
 
-    if (mode === 'menu') {
-      const matches = await analyzeMenuPhoto(photo.uri, beers);
-      setDetecting(false);
+    if (debug) {
+      setLastScan({
+        ...scan,
+        mode: scanMode,
+        photo: { uri: photo.uri, width: photo.width, height: photo.height },
+        durationMs: Date.now() - started,
+      });
+      router.push('/scan-debug');
+      return;
+    }
+
+    const matches = scan.matches;
+    if (scanMode === 'menu') {
       if (matches.length === 0) {
         setNotice({
           title: 'No gluten-free beers found',
@@ -52,8 +68,7 @@ export default function CameraScreen() {
         params: { ids: matches.map((b) => b.id).join(',') },
       });
     } else {
-      const match = await analyzeCanPhoto(photo.uri, beers);
-      setDetecting(false);
+      const match = matches[0];
       if (!match) {
         setNotice({
           title: 'Not in our gluten-free list',
@@ -63,7 +78,7 @@ export default function CameraScreen() {
       }
       router.replace({ pathname: '/beer/[id]', params: { id: String(match.id), viaPhoto: '1' } });
     }
-  }, [mode, ready, router]);
+  }, [debug, mode, ready, router]);
 
   if (!permission) return <View style={styles.container} />;
 
@@ -94,6 +109,11 @@ export default function CameraScreen() {
         >
           <Text style={styles.closeGlyph}>×</Text>
         </Pressable>
+        {debug ? (
+          <View style={styles.debugPill}>
+            <Text style={styles.debugPillText}>Scan debug on · hold shutter to turn off</Text>
+          </View>
+        ) : null}
       </View>
 
       <CameraView
@@ -120,6 +140,7 @@ export default function CameraScreen() {
         <Pressable
           style={[styles.shutter, detecting && styles.shutterDisabled]}
           onPress={takePhoto}
+          onLongPress={() => setScanDebugEnabled(!debug)}
           disabled={detecting || !ready}
           accessibilityRole="button"
           accessibilityLabel="Take photo"
@@ -133,7 +154,14 @@ export default function CameraScreen() {
 const makeStyles = (colors: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cameraBg },
   centered: { alignItems: 'center', justifyContent: 'center', padding: spacing(7) },
-  topBar: { paddingHorizontal: spacing(4) },
+  topBar: { paddingHorizontal: spacing(4), flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
+  debugPill: {
+    paddingHorizontal: spacing(3),
+    paddingVertical: spacing(1.5),
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  debugPillText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 11.5 },
   closeButton: {
     width: 32,
     height: 32,

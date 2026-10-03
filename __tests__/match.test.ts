@@ -15,7 +15,7 @@ describe('matchBeerByText', () => {
     expect(matchBeerByText(ocr, beers)?.name).toBe('Daura Damm');
   });
 
-  it('matches a beer via its brewery when the brewery is unique in the dataset', () => {
+  it('matches a beer by its name when the brewery is also printed', () => {
     const ocr = 'Stone Delicious IPA - Stone Brewing';
     expect(matchBeerByText(ocr, beers)?.name).toBe('Delicious IPA');
   });
@@ -59,6 +59,56 @@ describe('matchBeerByText', () => {
     ];
     const ocr = 'Shrouded Summit IPA - Ghostfish Brewing';
     expect(matchBeerByText(ocr, candidates)?.name).toBe('Shrouded Summit IPA');
+  });
+
+  it("does not match a generic name (IPA, Stout...) on another brewery's can", () => {
+    expect(matchBeerByText('MAREA ALTA\nIPA\nIndia Pale Ale 6.5%', beers)).toBeNull();
+    expect(matchBeerByText('Guinness\nDraught Stout', beers)).toBeNull();
+  });
+
+  it("matches a generic name when the beer's own brewery is on the label", () => {
+    const glutenbergIpa = matchBeerByText('GLUTENBERG\nIPA\nsans gluten', beers);
+    expect(glutenbergIpa?.brewery).toBe('Glutenberg (Brasseurs Sans Gluten)');
+    expect(glutenbergIpa?.name).toBe('IPA');
+
+    const omissionLager = matchBeerByText('OMISSION\nLAGER\ncrafted to remove gluten', beers);
+    expect(omissionLager?.brewery).toBe('Omission Brewing');
+    expect(omissionLager?.name).toBe('Lager');
+  });
+
+  it('ignores accents on either side, so OCR that drops or adds them still matches', () => {
+    expect(matchBeerByText('MARZEN FESTIVAL LAGER', beers)?.name).toBe('Märzen Festival Lager');
+    expect(matchBeerByText('Radanas IPA GLUTENFRI', beers)?.brewery).toBe('Rådanäs Bryggeri');
+    expect(matchBeerByText('Stag Bàn', beers)?.name).toBe('Stag Bán');
+  });
+
+  it('never matches on a brewery alone, since breweries also make beers with gluten', () => {
+    // Stone's only gluten-reduced beer is Delicious IPA; this is Stone IPA.
+    expect(matchBeerByText('STONE\nIPA\nStone Brewing', beers)).toBeNull();
+    expect(matchBeerByText('OMISSION BREWING', beers)).toBeNull();
+  });
+
+  it('matches a name with a misread letter when another word of it was read exactly', () => {
+    expect(matchBeerByText('TONE\nDelicions\nIPA', beers)?.name).toBe('Delicious IPA');
+    expect(matchBeerByText('DAUBA DAMM', beers)?.name).toBe('Daura Damm');
+  });
+
+  it('does not match short or unanchored near-misses that could be other words', () => {
+    // "sans" is one letter off Brewski's "Sansa", which is not gluten-free.
+    expect(matchBeerByText('GLUTENBERG\nsans gluten', beers)?.name).not.toBe('Sansa');
+    expect(matchBeerByText('Delicions IPX', beers)).toBeNull();
+    expect(matchBeerByText('DAURA DAMN', beers)).toBeNull();
+  });
+
+  it('accepts one misread letter in a long single-word name', () => {
+    expect(matchBeerByText('REDBRIDCE', beers)?.name).toBe('Redbridge');
+    expect(matchBeerByText('REDBRIDCF', beers)).toBeNull();
+  });
+
+  it('prefers an exact read over a near-miss of the same length', () => {
+    const near = { id: 1, name: 'Daura Dame', brewery: 'X' } as Beer;
+    const exact = { id: 2, name: 'Daura Damm', brewery: 'Y' } as Beer;
+    expect(matchBeerByText('DAURA DAMM', [near, exact])).toBe(exact);
   });
 
   it('returns null when nothing overlaps', () => {

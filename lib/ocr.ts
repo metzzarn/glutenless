@@ -1,8 +1,29 @@
 import TextRecognition, {
+  type TextBlock,
   type TextRecognitionResult,
 } from '@react-native-ml-kit/text-recognition';
 import type { Beer } from './db';
-import { matchBeerByText, matchBeersInMenuText } from './match';
+import {
+  findCanCandidates,
+  findMenuCandidates,
+  matchBeerByText,
+  matchBeersInMenuText,
+  type MatchCandidate,
+} from './match';
+
+export type ScanMode = 'can' | 'menu';
+
+/** What a photo scan found, kept whole so the scan debug screen can show how it got there. */
+export type PhotoScan = {
+  /** At most one beer for a can, any number for a menu. */
+  matches: Beer[];
+  /** ML Kit's blocks, with their positions in the photo. */
+  blocks: TextBlock[];
+  /** The full recognized text the matchers searched. */
+  text: string;
+  /** Every name/brewery hit, including the ones the matcher discarded. */
+  candidates: MatchCandidate[];
+};
 
 /**
  * Build the full recognized text ourselves from `result.blocks` rather than
@@ -18,17 +39,27 @@ export function extractFullText(result: TextRecognitionResult): string {
 }
 
 /**
- * Photo of a single can/bottle, matched on its label text. Barcodes aren't
+ * Recognizes the text in a photo and matches it against our beers: a can or
+ * bottle by its label text, a menu by every beer named on it. Barcodes aren't
  * used: the dataset has no barcode numbers, and a guessed match could show a
  * gluten-containing beer as gluten-free.
  */
-export async function analyzeCanPhoto(photoUri: string, beers: Beer[]): Promise<Beer | null> {
+export async function scanPhoto(photoUri: string, mode: ScanMode, beers: Beer[]): Promise<PhotoScan> {
   const result = await TextRecognition.recognize(photoUri);
-  return matchBeerByText(extractFullText(result), beers);
-}
-
-/** Photo of a menu: recognize all text and return every local beer mentioned. */
-export async function analyzeMenuPhoto(photoUri: string, beers: Beer[]): Promise<Beer[]> {
-  const result = await TextRecognition.recognize(photoUri);
-  return matchBeersInMenuText(extractFullText(result), beers);
+  const text = extractFullText(result);
+  if (mode === 'menu') {
+    return {
+      matches: matchBeersInMenuText(text, beers),
+      blocks: result.blocks ?? [],
+      text,
+      candidates: findMenuCandidates(text, beers),
+    };
+  }
+  const match = matchBeerByText(text, beers);
+  return {
+    matches: match ? [match] : [],
+    blocks: result.blocks ?? [],
+    text,
+    candidates: findCanCandidates(text, beers),
+  };
 }

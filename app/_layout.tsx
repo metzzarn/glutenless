@@ -52,6 +52,7 @@ export default function RootLayout() {
           <Stack.Screen name="camera" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           <Stack.Screen name="results" />
           <Stack.Screen name="beer/[id]" />
+          <Stack.Screen name="scan-debug" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

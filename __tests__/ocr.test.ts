@@ -5,7 +5,7 @@ jest.mock('@react-native-ml-kit/text-recognition', () => ({
 
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import type { Beer } from '../lib/db';
-import { analyzeCanPhoto, analyzeMenuPhoto, extractFullText } from '../lib/ocr';
+import { extractFullText, scanPhoto } from '../lib/ocr';
 import type { TextRecognitionResult } from '@react-native-ml-kit/text-recognition';
 
 function block(text: string) {
@@ -41,17 +41,29 @@ describe('analyzing photos', () => {
 
   it('matches a can or bottle by the text on its label', async () => {
     recognizes('DAURA DAMM', 'Pale lager 5.4%');
-    expect(await analyzeCanPhoto('file://can.jpg', beers)).toBe(beers[0]);
+    const scan = await scanPhoto('file://can.jpg', 'can', beers);
+    expect(scan.matches).toEqual([beers[0]]);
+    expect(scan.text).toBe('DAURA DAMM\nPale lager 5.4%');
     expect(TextRecognition.recognize).toHaveBeenCalledWith('file://can.jpg');
   });
 
   it('returns no beer for a label it does not know, so the app can warn', async () => {
     recognizes('Some Barley Lager');
-    expect(await analyzeCanPhoto('file://can.jpg', beers)).toBeNull();
+    expect((await scanPhoto('file://can.jpg', 'can', beers)).matches).toEqual([]);
+  });
+
+  it('keeps every candidate, including rejected ones, for the debug screen', async () => {
+    const stout = beer(3, 'Stout', 'Glutenberg');
+    recognizes('Guinness', 'Draught Stout');
+    const scan = await scanPhoto('file://can.jpg', 'can', [stout]);
+    expect(scan.matches).toEqual([]);
+    expect(scan.candidates).toEqual([
+      { beer: stout, field: 'name', needle: 'stout', found: 'stout', rejected: 'generic name without brewery "glutenberg"' },
+    ]);
   });
 
   it('finds every known beer on a menu', async () => {
     recognizes('Grapefruit IPA', 'Ghostfish', 'House Pils', 'Daura Damm');
-    expect(await analyzeMenuPhoto('file://menu.jpg', beers)).toEqual(beers);
+    expect((await scanPhoto('file://menu.jpg', 'menu', beers)).matches).toEqual(beers);
   });
 });

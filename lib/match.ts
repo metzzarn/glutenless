@@ -15,16 +15,31 @@ function normalize(s: string): string {
 }
 
 /**
- * Beer names that are just a style/category term (several dedicated GF
- * breweries literally name a product "IPA" or "Stout"). A menu's style
- * column repeats these same words for unrelated beers, so a bare substring
- * match on one of these names is unreliable on its own.
+ * Words that describe a beer's style rather than name it. Many gluten-free
+ * beers are named with nothing else ("IPA", "Hazy IPA", "West Coast Pale
+ * Ale"), and any brewery's beer of that style prints the same words — a Stone
+ * Hazy IPA, which contains gluten, matched Aurochs' gluten-free "Hazy IPA".
  */
-const GENERIC_STYLE_NAMES = new Set([
-  'ipa', 'india pale ale', 'pale ale', 'amber', 'amber ale', 'blonde', 'blonde ale',
-  'stout', 'lager', 'pilsner', 'porter', 'wheat', 'wheat beer', 'gluten free',
-  'saison', 'session ale', 'brown ale', 'red ale', 'golden ale', 'dark lager', 'bock',
-]);
+const STYLE_WORDS = new Set(
+  (
+    'ipa ipl dipa neipa apa esb india pale ale ales lager lagers pils pilsner pilsener stout porter ' +
+    'amber blonde blond golden gold red brown dark black white wheat weiss weizen witbier wit hefeweizen ' +
+    'sour gose kolsch helles dunkel dunkles bock doppelbock marzen festbier session hazy juicy new ' +
+    'england west coast double triple tripel dubbel quad imperial american english belgian irish german ' +
+    'mexican light lite premium classic original craft beer cerveza bier birra biere gluten free ' +
+    'glutenfri glutenfrei sin senza sans reduced removed alcohol alkoholfrei non zero cream extra special ' +
+    'bitter mild saison farmhouse fruit sparkling radler shandy honey rice hoppy hop hops unfiltered ' +
+    'keller natural bio organic ekologisk and the of with'
+  ).split(' '),
+);
+
+/**
+ * A name made only of style words ("Hazy IPA", "Light Lager") identifies no
+ * particular beer, so it only counts alongside the beer's own brewery.
+ */
+function isGenericName(name: string): boolean {
+  return name.split(' ').every((word) => STYLE_WORDS.has(word));
+}
 
 const BREWERY_STOP_WORDS = new Set([
   'brewing', 'beer', 'beers', 'brewery', 'breweries', 'co', 'company', 'the', 'craft',
@@ -145,29 +160,81 @@ function findWords(ocrWords: string[], needle: string): string | null {
 }
 
 /**
+ * Rejoins words that OCR split apart on letter-spaced lettering: a wordmark
+ * printed "S T O N E" reads as "s t o n e" or "ston e". A run of short
+ * fragments, at least half of them single letters, becomes one word.
+ */
+function joinSpacedLetters(words: string[]): string[] {
+  const joined: string[] = [];
+  let run: string[] = [];
+  const flush = () => {
+    const singles = run.filter((w) => w.length === 1).length;
+    if (run.length >= 2 && singles * 2 >= run.length) joined.push(run.join(''));
+    else joined.push(...run);
+    run = [];
+  };
+  for (const word of words) {
+    if (word.length <= 4 && /^[a-z]+$/.test(word)) run.push(word);
+    else {
+      flush();
+      joined.push(word);
+    }
+  }
+  flush();
+  return joined;
+}
+
+/** The OCR words, plus a version with letter-spaced words rejoined when that differs. */
+function readings(text: string): string[][] {
+  const words = normalize(text).split(' ').filter(Boolean);
+  const joined = joinSpacedLetters(words);
+  return joined.length === words.length ? [words] : [words, joined];
+}
+
+function findInReadings(ocrReadings: string[][], needle: string): string | null {
+  for (const words of ocrReadings) {
+    const found = findWords(words, needle);
+    if (found) return found;
+  }
+  // Rejoining can't tell where one spaced-out word ends and the next starts
+  // ("D A U R A  D A M M" → "dauradamm"), so also try the name without spaces, exactly.
+  const compact = needle.replace(/ /g, '');
+  if (compact !== needle && ocrReadings.at(-1)!.includes(compact)) return compact;
+  // And the other way round: a one-word name read as two ("BREW DOG" for "BrewDog").
+  if (compact === needle && needle.length >= 6) {
+    const words = ocrReadings[0];
+    for (let i = 0; i + 1 < words.length; i++) {
+      if (words[i] + words[i + 1] === needle) return `${words[i]} ${words[i + 1]}`;
+    }
+  }
+  return null;
+}
+
+/**
  * Every name/brewery hit for a single can or bottle, including the ones the
  * matcher discards — the scan debug screen shows all of them.
  *
  * Only a beer's name identifies it. A brewery alone doesn't: most breweries
  * here also make beers with gluten (Stone's only gluten-reduced beer is
  * Delicious IPA), so a brewery hit is listed but never counted. A generic
- * name ("IPA", "Stout") only counts when the beer's brewery is also on the
+ * name ("IPA", "Hazy IPA") only counts when the beer's brewery is also on the
  * label, otherwise another brewery's IPA would be shown as our gluten-free one.
+ * And a name never counts when the label shows a different brewery from our list.
  */
 export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[] {
-  const ocrWords = normalize(text).split(' ').filter(Boolean);
-  if (!ocrWords.length) return [];
+  const ocrReadings = readings(text);
+  if (!ocrReadings[0].length) return [];
 
   const candidates: MatchCandidate[] = [];
   const seenBreweries = new Set<string>();
   for (const beer of beers) {
     const name = normalize(beer.name);
-    const nameFound = name ? findWords(ocrWords, name) : null;
+    const nameFound = name ? findInReadings(ocrReadings, name) : null;
     if (nameFound) {
       let rejected: string | undefined;
-      if (GENERIC_STYLE_NAMES.has(name)) {
+      if (isGenericName(name)) {
         const token = breweryToken(beer.brewery);
-        if (!token || !findWords(ocrWords, token)) {
+        if (!token || !findInReadings(ocrReadings, token)) {
           rejected = `generic name without brewery "${token}"`;
         }
       }
@@ -178,7 +245,7 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
     if (seenBreweries.has(beer.brewery)) continue;
     seenBreweries.add(beer.brewery);
     for (const key of breweryKeys(beer.brewery)) {
-      const breweryFound = findWords(ocrWords, key);
+      const breweryFound = findInReadings(ocrReadings, key);
       if (!breweryFound) continue;
       candidates.push({
         beer,
@@ -188,6 +255,16 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
         rejected: "a brewery alone doesn't say which of its beers this is",
       });
       break;
+    }
+  }
+
+  // A label showing another brewery from our list, and not this beer's own,
+  // is that other brewery's beer of the same name or style.
+  const breweriesRead = new Set(candidates.filter((c) => c.field === 'brewery').map((c) => c.beer.brewery));
+  for (const candidate of candidates) {
+    if (candidate.field !== 'name' || candidate.rejected || !breweriesRead.size) continue;
+    if (!breweriesRead.has(candidate.beer.brewery)) {
+      candidate.rejected = `the label shows another brewery (${[...breweriesRead].join(', ')})`;
     }
   }
   return candidates;
@@ -233,15 +310,16 @@ export function suggestByBrewery(candidates: MatchCandidate[], beers: Beer[]): B
 export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[] {
   const haystack = normalize(text);
   if (!haystack) return [];
+  const joinedHaystack = readings(text).at(-1)!.join(' ');
 
   const lines = text.split('\n').map(normalize);
 
   const candidates: MatchCandidate[] = [];
   for (const beer of beers) {
     const name = normalize(beer.name);
-    if (!name || !haystack.includes(name)) continue;
+    if (!name || !(haystack.includes(name) || joinedHaystack.includes(name))) continue;
     let rejected: string | undefined;
-    if (GENERIC_STYLE_NAMES.has(name)) {
+    if (isGenericName(name)) {
       const token = breweryToken(beer.brewery);
       if (!token || !occursNear(lines, name, token, 2)) {
         rejected = `generic name without brewery "${token}" nearby`;

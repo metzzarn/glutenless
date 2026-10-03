@@ -111,6 +111,24 @@ describe('matchBeerByText', () => {
     expect(matchBeerByText('DAURA DAMM', [near, exact])).toBe(exact);
   });
 
+  it("does not match another brewery's beer named only with style words", () => {
+    // A real scan of Stone Hazy IPA, which contains gluten. Aurochs' gluten-free
+    // beer is called just "Hazy IPA". First ML Kit's reading, then Gemini Nano's.
+    expect(matchBeerByText('NE\nHAZY\nIPA\nAN AMAZiNGLY HAZY IPA\n6.7% alelvol - 12 fl ox', beers)).toBeNull();
+    expect(matchBeerByText('STONE\nHAZY\nIPA', beers)).toBeNull();
+    expect(matchBeerByText('Sierra Nevada\nDouble IPA', beers)).toBeNull();
+    expect(matchBeerByText('Goose Island\nWest Coast IPA', beers)).toBeNull();
+    expect(matchBeerByText('AUROCHS\nHAZY IPA', beers)?.brewery).toBe('Aurochs Brewing Co.');
+  });
+
+  it('rejects a name when the label shows a different brewery from our list', () => {
+    const redbridge = { id: 1, name: 'Redbridge', brewery: 'Anheuser-Busch' } as Beer;
+    const stone = { id: 2, name: 'Delicious IPA', brewery: 'Stone Brewing' } as Beer;
+    expect(matchBeerByText('STONE\nRedbridge', [redbridge, stone])).toBeNull();
+    expect(matchBeerByText('Redbridge', [redbridge, stone])).toBe(redbridge);
+    expect(matchBeerByText('ANHEUSER-BUSCH\nRedbridge', [redbridge, stone])).toBe(redbridge);
+  });
+
   it('returns null when nothing overlaps', () => {
     expect(matchBeerByText('Completely Unrelated Text', beers)).toBeNull();
   });
@@ -134,6 +152,22 @@ describe('suggestByBrewery', () => {
     expect(suggest('BRUNEHAUT\nbière blonde')).not.toHaveLength(0);
     expect(suggest('MOLSON COORS').every((b) => b.brewery === 'Coors / Molson Coors')).toBe(true);
     expect(suggest('MOLSON COORS')).not.toHaveLength(0);
+  });
+
+  it('reads a letter-spaced wordmark that OCR split apart', () => {
+    // A real scan of a Delicious IPA can, whose wordmark is printed "S T O N E".
+    expect(suggest('STON E\nSYIPA /LEMONDROP & EL DORAm').map((b) => b.name)).toEqual(['Delicious IPA']);
+    expect(suggest('S T O N E').map((b) => b.name)).toEqual(['Delicious IPA']);
+  });
+
+  it('keeps ordinary short words apart while rejoining spaced letters', () => {
+    expect(matchBeerByText("O'BRIEN\nPale Ale", beers)?.brewery).toBe("O'Brien Beer (Rebellion Brewing)");
+    expect(matchBeerByText('D A U R A  D A M M', beers)?.name).toBe('Daura Damm');
+  });
+
+  it('reads a one-word brewery that OCR split in two', () => {
+    // A real Gemini Nano reading of a BrewDog Vagabond label.
+    expect(suggest('BREW DOG\nVAGABOND\nGLUTEN FREE').map((b) => b.name)).toEqual(['Vagabond Pale Ale']);
   });
 
   it('lists current beers before discontinued ones', () => {

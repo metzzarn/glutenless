@@ -1,13 +1,43 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBadge } from '../components/StatusBadge';
+import { identifyWithAi } from '../lib/aiLabel';
 import { listBeers, type Beer } from '../lib/db';
+import { isGlutenClaimWord, unseenNameWords } from '../lib/match';
 import { scanPhoto } from '../lib/ocr';
 import { setLastScan, setScanDebugEnabled, useScanDebugEnabled } from '../lib/scanDebug';
 import { fonts, spacing, useColors, useStyles, type Palette } from '../lib/theme';
+
+/** What the camera shows after a scan that didn't go straight to a beer. */
+type Notice = {
+  title: string;
+  body: string;
+  /** Beers to pick from, each with the words of its name the label readings didn't contain. */
+  suggestions?: { beer: Beer; unseen: string[] }[];
+  /** A beer only the on-device model read, for the person to check against the label. */
+  confirm?: Beer;
+  /** Shown instead when the person says it isn't `confirm`. */
+  otherwise?: Notice;
+};
+
+const NOT_IN_LIST: Notice = {
+  title: 'Not in our gluten-free list',
+  body: "We couldn't match this to a gluten-free or gluten-removed beer. Assume it contains gluten unless you can confirm otherwise. You can also try searching by name.",
+};
+
+function pickNotice(suggestions: Beer[], texts: string[]): Notice {
+  const breweries = [...new Set(suggestions.map((b) => b.brewery.replace(/\s*\(.*?\)/g, '')))];
+  const one = breweries.length === 1 ? breweries[0] : null;
+  return {
+    title: one ? `We read “${one}” but not which beer` : 'We read the brewery but not which beer',
+    body: `If your beer is one of these, tap it. Other beers from ${one ?? 'these breweries'} aren't in our gluten-free list, so assume they contain gluten.`,
+    suggestions: suggestions.map((beer) => ({ beer, unseen: unseenNameWords(beer, texts) })),
+  };
+}
 
 export default function CameraScreen() {
   const { mode } = useLocalSearchParams<{ mode: 'can' | 'menu' }>();
@@ -19,8 +49,11 @@ export default function CameraScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [ready, setReady] = useState(false);
-  const [detecting, setDetecting] = useState(false);
-  const [notice, setNotice] = useState<{ title: string; body: string; suggestions?: Beer[] } | null>(null);
+  const [zoom, setZoom] = useState(0);
+  const zoomRef = useRef(0);
+  const isFocused = useIsFocused();
+  const [detecting, setDetecting] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const debug = useScanDebugEnabled();
 
   useEffect(() => {
@@ -29,20 +62,50 @@ export default function CameraScreen() {
     }
   }, [permission, requestPermission]);
 
+  // The camera stays underneath a scan result, so going back returns to it.
+  // It's only switched on while this screen is showing.
+  useEffect(() => {
+    if (!isFocused) setReady(false);
+  }, [isFocused]);
+
   const close = useCallback(() => router.back(), [router]);
+
+  const openBeer = useCallback(
+    (id: number, viaPhoto: boolean) => {
+      setNotice(null);
+      router.push({ pathname: '/beer/[id]', params: viaPhoto ? { id: String(id), viaPhoto: '1' } : { id: String(id) } });
+    },
+    [router],
+  );
+
+  // Pinch to zoom. expo-camera's zoom is 0–1 of the phone's maximum, so each
+  // doubling of the pinch adds a quarter of the range.
+  const updateZoom = useCallback((next: number) => {
+    zoomRef.current = Math.min(1, Math.max(0, next));
+    setZoom(zoomRef.current);
+  }, []);
+  const pinch = useMemo(() => {
+    let zoomAtStart = 0;
+    return Gesture.Pinch()
+      .runOnJS(true)
+      .onStart(() => {
+        zoomAtStart = zoomRef.current;
+      })
+      .onUpdate((e) => updateZoom(zoomAtStart + Math.log2(e.scale) * 0.25));
+  }, [updateZoom]);
 
   const takePhoto = useCallback(async () => {
     if (!cameraRef.current || !ready) return;
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
     if (!photo?.uri) return;
 
-    setDetecting(true);
+    setDetecting('Analyzing photo…');
     setNotice(null);
     const beers = await listBeers('all', '');
     const scanMode = mode === 'menu' ? 'menu' : 'can';
     const started = Date.now();
     const scan = await scanPhoto(photo.uri, scanMode, beers);
-    setDetecting(false);
+    setDetecting(null);
 
     if (debug) {
       setLastScan({
@@ -64,32 +127,38 @@ export default function CameraScreen() {
         });
         return;
       }
-      router.replace({
+      router.push({
         pathname: '/results',
         params: { ids: matches.map((b) => b.id).join(',') },
       });
     } else {
       const match = matches[0];
-      if (!match && scan.suggestions.length) {
-        const breweries = [...new Set(scan.suggestions.map((b) => b.brewery.replace(/\s*\(.*?\)/g, '')))];
-        const one = breweries.length === 1 ? breweries[0] : null;
+      if (match) {
+        openBeer(match.id, true);
+        return;
+      }
+
+      // OCR found no beer: on phones with an on-device model, read the label
+      // again with it (it reads script lettering OCR can't).
+      setDetecting('Reading the label…');
+      const ai = await identifyWithAi(photo.uri, beers);
+      setDetecting(null);
+
+      const texts = [scan.text, ...(ai?.texts ?? [])];
+      const suggestions = scan.suggestions.length ? scan.suggestions : (ai?.suggestions ?? []);
+      const otherwise = suggestions.length ? pickNotice(suggestions, texts) : NOT_IN_LIST;
+      if (ai?.match) {
         setNotice({
-          title: one ? `We read “${one}” but not which beer` : 'We read the brewery but not which beer',
-          body: `If your beer is one of these, tap it. Other beers from ${one ?? 'these breweries'} aren't in our gluten-free list, so assume they contain gluten.`,
-          suggestions: scan.suggestions,
+          title: `Is this ${ai.match.name}?`,
+          body: `Read from the label by on-device AI. Check that your label says “${ai.match.name}” before trusting it.`,
+          confirm: ai.match,
+          otherwise,
         });
         return;
       }
-      if (!match) {
-        setNotice({
-          title: 'Not in our gluten-free list',
-          body: "We couldn't match this to a gluten-free or gluten-removed beer. Assume it contains gluten unless you can confirm otherwise. You can also try searching by name.",
-        });
-        return;
-      }
-      router.replace({ pathname: '/beer/[id]', params: { id: String(match.id), viaPhoto: '1' } });
+      setNotice(otherwise);
     }
-  }, [debug, mode, ready, router]);
+  }, [debug, mode, openBeer, ready, router]);
 
   if (!permission) return <View style={styles.container} />;
 
@@ -127,12 +196,24 @@ export default function CameraScreen() {
         ) : null}
       </View>
 
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing="back"
-        onCameraReady={() => setReady(true)}
-      />
+      <GestureDetector gesture={pinch}>
+        <View style={styles.camera}>
+          {isFocused ? (
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing="back"
+              zoom={zoom}
+              onCameraReady={() => setReady(true)}
+            />
+          ) : null}
+          {zoom > 0.01 ? (
+            <Pressable style={styles.zoomPill} onPress={() => updateZoom(0)} accessibilityRole="button">
+              <Text style={styles.zoomPillText}>Zoomed · tap to reset</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </GestureDetector>
 
       <View style={styles.hintWrap} pointerEvents="none">
         <Text style={styles.hint}>
@@ -144,25 +225,65 @@ export default function CameraScreen() {
         <View style={styles.noticeWrap} accessibilityRole="alert">
           <Text style={styles.noticeTitle}>{notice.title}</Text>
           <Text style={styles.noticeText}>{notice.body}</Text>
-          {notice.suggestions ? (
-            <ScrollView style={styles.suggestions} contentContainerStyle={{ gap: spacing(1.5) }}>
-              {notice.suggestions.map((beer) => (
+          {notice.confirm ? (
+            <>
+              <View style={styles.suggestion}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.suggestionName} numberOfLines={1}>{notice.confirm.name}</Text>
+                  <Text style={styles.suggestionMeta} numberOfLines={1}>
+                    {notice.confirm.brewery} · {notice.confirm.style}
+                  </Text>
+                </View>
+                <StatusBadge status={notice.confirm.status} />
+              </View>
+              <View style={styles.confirmButtons}>
                 <Pressable
-                  key={beer.id}
-                  style={styles.suggestion}
-                  onPress={() => router.replace({ pathname: '/beer/[id]', params: { id: String(beer.id) } })}
+                  style={[styles.confirmButton, styles.confirmYes]}
+                  onPress={() => openBeer(notice.confirm!.id, true)}
                   accessibilityRole="button"
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.suggestionName} numberOfLines={1}>{beer.name}</Text>
-                    <Text style={styles.suggestionMeta} numberOfLines={1}>
-                      {beer.style}
-                      {beer.discontinued ? ' · discontinued' : ''}
-                    </Text>
-                  </View>
-                  <StatusBadge status={beer.status} />
+                  <Text style={styles.confirmYesText}>Yes, that's it</Text>
                 </Pressable>
-              ))}
+                <Pressable
+                  style={styles.confirmButton}
+                  onPress={() => setNotice(notice.otherwise ?? NOT_IN_LIST)}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.confirmNoText}>No</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : null}
+          {notice.suggestions ? (
+            <ScrollView style={styles.suggestions} contentContainerStyle={{ gap: spacing(1.5) }}>
+              {notice.suggestions.map(({ beer, unseen }) => {
+                const claim = unseen.filter(isGlutenClaimWord);
+                const other = unseen.filter((w) => !isGlutenClaimWord(w));
+                return (
+                  <Pressable
+                    key={beer.id}
+                    style={styles.suggestion}
+                    onPress={() => openBeer(beer.id, false)}
+                    accessibilityRole="button"
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.suggestionName} numberOfLines={1}>{beer.name}</Text>
+                      <Text style={styles.suggestionMeta} numberOfLines={1}>
+                        {beer.style}
+                        {beer.discontinued ? ' · discontinued' : ''}
+                      </Text>
+                      {/* The gluten-free version of a beer can share its whole name with the regular one. */}
+                      {claim.length ? (
+                        <Text style={styles.suggestionClaim}>Only if your label says “{claim.join(' ')}”</Text>
+                      ) : null}
+                      {other.length ? (
+                        <Text style={styles.suggestionMeta}>Not seen on the label: {other.join(' ')}</Text>
+                      ) : null}
+                    </View>
+                    <StatusBadge status={beer.status} />
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           ) : null}
         </View>
@@ -170,14 +291,14 @@ export default function CameraScreen() {
 
       <View style={styles.shutterWrap}>
         <Pressable
-          style={[styles.shutter, detecting && styles.shutterDisabled]}
+          style={[styles.shutter, !!detecting && styles.shutterDisabled]}
           onPress={takePhoto}
           onLongPress={() => setScanDebugEnabled(!debug)}
-          disabled={detecting || !ready}
+          disabled={!!detecting || !ready}
           accessibilityRole="button"
           accessibilityLabel="Take photo"
         />
-        {detecting ? <Text style={styles.detectingText}>Analyzing photo…</Text> : null}
+        {detecting ? <Text style={styles.detectingText}>{detecting}</Text> : null}
       </View>
     </View>
   );
@@ -210,6 +331,16 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
   },
+  zoomPill: {
+    position: 'absolute',
+    bottom: spacing(3),
+    alignSelf: 'center',
+    paddingHorizontal: spacing(3),
+    paddingVertical: spacing(1.5),
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  zoomPillText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 12 },
   hintWrap: { position: 'absolute', top: '42%', left: 0, right: 0, alignItems: 'center' },
   hint: {
     color: 'rgba(255,255,255,0.75)',
@@ -242,6 +373,18 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   },
   suggestionName: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 14 },
   suggestionMeta: { color: 'rgba(255,255,255,0.7)', fontFamily: fonts.sans, fontSize: 12, marginTop: 1 },
+  suggestionClaim: { color: '#F2CC7A', fontFamily: fonts.sansBold, fontSize: 12, marginTop: 2 },
+  confirmButtons: { flexDirection: 'row', gap: spacing(2), marginTop: spacing(1.5) },
+  confirmButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing(2.5),
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  confirmYes: { backgroundColor: colors.white },
+  confirmYesText: { color: colors.cameraBg, fontFamily: fonts.sansBold, fontSize: 14 },
+  confirmNoText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 14 },
   shutterWrap: { alignItems: 'center', paddingVertical: spacing(5.5), gap: spacing(2.5) },
   shutter: {
     width: 66,

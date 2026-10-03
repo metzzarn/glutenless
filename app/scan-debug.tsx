@@ -4,17 +4,17 @@ import { Image, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AI_VARIANTS,
-  agreedText,
+  combineAiReadings,
   downloadAiModel,
   getAiStatus,
-  matchAiText,
   readLabelWithAi,
+  type AiIdentification,
   type AiLabelReading,
   type AiVariant,
   type LabelReaderStatus,
 } from '../lib/aiLabel';
 import { listBeers, type Beer } from '../lib/db';
-import { normalizeOcrText, type MatchCandidate } from '../lib/match';
+import { isGlutenClaimWord, normalizeOcrText, unseenNameWords, type MatchCandidate } from '../lib/match';
 import { getLastScan, type DebugScan } from '../lib/scanDebug';
 import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
@@ -61,12 +61,39 @@ function readingLines(reading: AiLabelReading): string[] {
   ];
 }
 
+/**
+ * What the camera does with this photo outside debug mode, as lines: ML Kit's
+ * match if it has one, otherwise Gemini Nano's (to confirm), otherwise
+ * suggestions or the warning. Mirrors app/camera.tsx.
+ */
+function normalScanOutcome(scan: DebugScan, ai: AiIdentification | null): string[] {
+  if (scan.mode === 'menu') return [verdict(scan)];
+  if (scan.matches.length) return [`Opens ${scan.matches[0].name} (ML Kit match; Nano isn't run)`];
+  if (ai?.match) return [`Asks “Is this ${ai.match.name}?” (both Nano readings matched it)`];
+  const suggestions = scan.suggestions.length ? scan.suggestions : (ai?.suggestions ?? []);
+  if (!suggestions.length) return ['Shows the “not in our gluten-free list” warning'];
+  const texts = [scan.text, ...(ai?.texts ?? [])];
+  return [
+    'Suggests:',
+    ...suggestions.map((beer) => {
+      const unseen = unseenNameWords(beer, texts);
+      const claim = unseen.filter(isGlutenClaimWord);
+      const other = unseen.filter((w) => !isGlutenClaimWord(w));
+      return (
+        `- ${beer.name}` +
+        (claim.length ? ` · only if the label says “${claim.join(' ')}”` : '') +
+        (other.length ? ` · not seen: ${other.join(' ')}` : '')
+      );
+    }),
+  ];
+}
+
 /** A plain-text report of a scan, for pasting into a test fixture or an issue. */
 function scanReport(
   scan: DebugScan,
   aiStatus: AiStatus,
   results: Record<string, VariantResult>,
-  agreed: AiLabelReading | null,
+  outcome: string[],
 ): string {
   const aiLines =
     aiStatus !== 'available'
@@ -79,11 +106,11 @@ function scanReport(
             if (result?.state === 'error') return [head, `Error: ${result.message}`, ''];
             return [head, `Not finished: ${result?.state ?? 'waiting'}`, ''];
           }),
-          '## Words most large-text readings agree on',
-          ...(agreed ? readingLines(agreed) : ['(fewer than two readings)']),
         ];
   return [
     `Mode: ${scan.mode}`,
+    'Normal scan:',
+    ...outcome,
     `Photo: ${scan.photo.width}x${scan.photo.height} px, ${scan.blocks.length} blocks, ${scan.durationMs} ms`,
     `Matched: ${beerList(scan.matches) || 'nothing'}`,
     ...(scan.suggestions.length ? [`Suggested: ${beerList(scan.suggestions)}`] : []),
@@ -169,7 +196,10 @@ export default function ScanDebugScreen() {
 
   const largeTextReadings = AI_VARIANTS.map((v) => results[v.id])
     .flatMap((r) => (r?.state === 'done' ? [r.reading] : []));
-  const agreed = largeTextReadings.length >= 2 ? matchAiText(agreedText(largeTextReadings.map((r) => r.text)), beers) : null;
+  const aiDone = aiStatus !== 'available' || largeTextReadings.length === AI_VARIANTS.length;
+  const outcome = aiDone
+    ? normalScanOutcome(scan, largeTextReadings.length >= 2 ? combineAiReadings(largeTextReadings, beers) : null)
+    : ['Waiting for Gemini Nano…'];
 
   const openResult = () => {
     if (scan.mode === 'menu') {
@@ -196,11 +226,19 @@ export default function ScanDebugScreen() {
         <Text style={styles.title}>Scan debug</Text>
         <Pressable
           style={styles.shareButton}
-          onPress={() => Share.share({ message: scanReport(scan, aiStatus, results, agreed) })}
+          onPress={() => Share.share({ message: scanReport(scan, aiStatus, results, outcome) })}
           accessibilityRole="button"
         >
           <Text style={styles.shareText}>Share report</Text>
         </Pressable>
+      </View>
+
+      <View style={[styles.verdict, { marginBottom: spacing(2.5) }]}>
+        <Text style={styles.meta}>What a normal scan would do</Text>
+        <Text style={styles.verdictTitle}>{outcome[0]}</Text>
+        {outcome.slice(1).map((line, i) => (
+          <Text key={i} style={styles.body}>{line}</Text>
+        ))}
       </View>
 
       <View style={styles.verdict}>
@@ -242,13 +280,6 @@ export default function ScanDebugScreen() {
         </View>
       ) : (
         <View style={{ gap: spacing(2.5) }}>
-          {agreed ? (
-            <View style={styles.verdict}>
-              <Text style={styles.meta}>Words most large-text readings agree on</Text>
-              <Text style={styles.verdictTitle}>{verdict(agreed)}</Text>
-              <Text selectable style={[styles.code, { marginTop: spacing(2) }]}>{agreed.text || '(none)'}</Text>
-            </View>
-          ) : null}
           {AI_VARIANTS.map((variant) => {
             const result = results[variant.id];
             return (

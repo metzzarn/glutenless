@@ -36,8 +36,8 @@ export type AiVariant = {
  * round: the "all text" prompt invented small print in 2 of 6 (an address, a
  * wrong ABV), while the large-text prompt invented nothing in 24 readings and
  * was twice as fast. The full model and thinking mode gave word-for-word the
- * same output as the default, so they were dropped. Two photo sizes remain so
- * the agreement check has two readings to compare.
+ * same output as the default, so they were dropped. Two photo sizes remain:
+ * a scan only accepts a beer both readings match on their own.
  */
 export const AI_VARIANTS: AiVariant[] = [
   { id: 'main', label: 'Large text, 1536 px photo', prompt: PROMPT_MAIN, options: { systemInstruction: SYSTEM } },
@@ -88,4 +88,44 @@ export function agreedText(texts: string[]): string {
     .map((line) => normalizeOcrText(line).split(' ').filter((w) => w && agreed(w)).join(' '))
     .filter(Boolean)
     .join('\n');
+}
+
+/** What the on-device model concluded about a can or bottle, from all its readings. */
+export type AiIdentification = {
+  /** A beer every reading matched on its own. For the person to confirm, never shown as certain. */
+  match: Beer | null;
+  /** Otherwise, beers from a brewery the readings agree on. */
+  suggestions: Beer[];
+  /** Every reading's text, so the camera can show which words of a suggestion went unseen. */
+  texts: string[];
+};
+
+/**
+ * Combines readings of the same photo. A beer counts only when every reading
+ * matched it independently: one setup's invented or misread text then can't
+ * produce a match alone.
+ */
+export function combineAiReadings(aiReadings: AiLabelReading[], beers: Beer[]): AiIdentification {
+  const texts = aiReadings.map((r) => r.text);
+  const first = aiReadings[0]?.matches[0];
+  if (first && aiReadings.length >= 2 && aiReadings.every((r) => r.matches[0]?.id === first.id)) {
+    return { match: first, suggestions: [], texts };
+  }
+  return { match: null, suggestions: matchAiText(agreedText(texts), beers).suggestions, texts };
+}
+
+/**
+ * Reads a can or bottle with every large-text setup and combines them. Null
+ * when the phone has no on-device model ready or reading fails, so the camera
+ * falls back to the OCR result.
+ */
+export async function identifyWithAi(photoUri: string, beers: Beer[]): Promise<AiIdentification | null> {
+  try {
+    if ((await LabelReader.getStatusAsync()) !== 'available') return null;
+    const aiReadings: AiLabelReading[] = [];
+    for (const variant of AI_VARIANTS) aiReadings.push(await readLabelWithAi(photoUri, beers, variant));
+    return combineAiReadings(aiReadings, beers);
+  } catch {
+    return null;
+  }
 }

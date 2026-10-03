@@ -1,4 +1,11 @@
-import { findCanCandidates, matchBeerByText, matchBeersInMenuText, suggestByBrewery } from '../lib/match';
+import {
+  findCanCandidates,
+  isGlutenClaimWord,
+  matchBeerByText,
+  matchBeersInMenuText,
+  suggestByBrewery,
+  unseenNameWords,
+} from '../lib/match';
 import beersSeed from '../data/beers.json';
 import type { Beer, BeerData } from '../lib/db';
 import { statusFromFlags } from '../lib/status';
@@ -129,6 +136,27 @@ describe('matchBeerByText', () => {
     expect(matchBeerByText('ANHEUSER-BUSCH\nRedbridge', [redbridge, stone])).toBe(redbridge);
   });
 
+  it("matches a beer whose label leaves the style out of its name, with its brewery", () => {
+    // A real Gemini Nano reading of BrewDog's "Vagabond Pale Ale", which the label calls "VAGABOND".
+    expect(matchBeerByText('BREW DOG\nVAGABOND\nGLUTEN FREE', beers)?.name).toBe('Vagabond Pale Ale');
+    // Without the brewery, a lone word isn't enough.
+    expect(matchBeerByText('VAGABOND', beers)).toBeNull();
+  });
+
+  it('never drops gluten-free words from a name', () => {
+    // A real Gemini Nano reading of a regular Peroni, which contains gluten.
+    expect(matchBeerByText('PERONI\nNASTRO AZZURRO', beers)).toBeNull();
+    // Words in a different order than the name still count when all are there.
+    expect(matchBeerByText('PERONI\nGLUTEN FREE\nNASTRO AZZURRO', beers)?.name).toBe('Peroni Nastro Azzurro Gluten Free');
+  });
+
+  it("matches nothing when the words read fit several of the brewery's beers", () => {
+    const lager = { id: 1, name: 'Vagabond Lager', brewery: 'BrewDog' } as Beer;
+    const ipa = { id: 2, name: 'Vagabond IPA', brewery: 'BrewDog' } as Beer;
+    expect(matchBeerByText('BREWDOG\nVAGABOND', [lager, ipa])).toBeNull();
+    expect(matchBeerByText('BREWDOG\nVAGABOND\nIPA', [lager, ipa])).toBe(ipa);
+  });
+
   it('returns null when nothing overlaps', () => {
     expect(matchBeerByText('Completely Unrelated Text', beers)).toBeNull();
   });
@@ -167,7 +195,9 @@ describe('suggestByBrewery', () => {
 
   it('reads a one-word brewery that OCR split in two', () => {
     // A real Gemini Nano reading of a BrewDog Vagabond label.
-    expect(suggest('BREW DOG\nVAGABOND\nGLUTEN FREE').map((b) => b.name)).toEqual(['Vagabond Pale Ale']);
+    const suggested = suggest('BREW DOG\nVAGABOND\nGLUTEN FREE');
+    expect(suggested.map((b) => b.name)).toContain('Vagabond Pale Ale');
+    expect(suggested.every((b) => b.brewery === 'BrewDog')).toBe(true);
   });
 
   it('lists current beers before discontinued ones', () => {
@@ -177,6 +207,28 @@ describe('suggestByBrewery', () => {
 
   it('suggests nothing when no brewery was read', () => {
     expect(suggest('Some Barley Lager')).toEqual([]);
+  });
+});
+
+describe('unseenNameWords', () => {
+  const beer = (name: string) => beers.find((b) => b.name === name)!;
+
+  it("lists the gluten-free words missing from a regular beer's label", () => {
+    // A real ML Kit reading of a regular Peroni Nastro Azzurro, which contains gluten.
+    const ocr = 'AP\nTAL\n8IRA\nPOM\nDAL18 46\nSUPERIORE\nPERONI\nNASTRO\nAZZURRO\nTALIP ANA';
+    const unseen = unseenNameWords(beer('Peroni Nastro Azzurro Gluten Free'), [ocr]);
+    expect(unseen).toEqual(['Gluten', 'Free']);
+    expect(unseen.every(isGlutenClaimWord)).toBe(true);
+  });
+
+  it('counts a word seen in any of the readings', () => {
+    expect(unseenNameWords(beer('Delicious IPA'), ['STONE', 'STONE\nDelicions IPA'])).toEqual([]);
+    expect(unseenNameWords(beer('Vagabond Pale Ale'), ['BREWDOG\nVAGABOND\nGLUTEN FREE'])).toEqual(['Pale', 'Ale']);
+  });
+
+  it('recognizes gluten-free claims in the languages of our list', () => {
+    expect(['Gluten-Free', 'Glutenfri', 'Glutenfrei', 'Sin', 'Senza'].every(isGlutenClaimWord)).toBe(true);
+    expect(['Pale', 'Delicious', 'Nastro'].some(isGlutenClaimWord)).toBe(false);
   });
 });
 

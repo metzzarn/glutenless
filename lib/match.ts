@@ -33,6 +33,19 @@ const STYLE_WORDS = new Set(
   ).split(' '),
 );
 
+/** Words that claim a beer is gluten-free or gluten-reduced, in the languages of our list. */
+const GLUTEN_CLAIM_WORDS = new Set(['gluten', 'free', 'glutenfri', 'glutenfrei', 'sin', 'senza', 'sans', 'gf', 'reduced', 'removed']);
+
+/**
+ * The words of a beer's name a label must show to identify it: all but the
+ * style words, which labels often leave out ("Vagabond Pale Ale" is printed
+ * "VAGABOND"). Gluten-free claims always stay: "Peroni Nastro Azzurro Gluten
+ * Free" and the regular Peroni, which contains gluten, differ only by them.
+ */
+function distinctiveWords(name: string): string[] {
+  return name.split(' ').filter((word) => word && (!STYLE_WORDS.has(word) || GLUTEN_CLAIM_WORDS.has(word)));
+}
+
 /**
  * A name made only of style words ("Hazy IPA", "Light Lager") identifies no
  * particular beer, so it only counts alongside the beer's own brewery.
@@ -258,6 +271,30 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
     }
   }
 
+  // A beer named with more than the label printed: once its own brewery is
+  // read, every distinctive word of its name counts as naming it, as long as
+  // that fits only one of the brewery's beers.
+  const breweriesSeen = new Set(candidates.filter((c) => c.field === 'brewery').map((c) => c.beer.brewery));
+  const fullyNamed = new Set(candidates.filter((c) => c.field === 'name' && !c.rejected).map((c) => c.beer.id));
+  for (const brewery of breweriesSeen) {
+    const fits = beers.flatMap((beer) => {
+      if (beer.brewery !== brewery || fullyNamed.has(beer.id)) return [];
+      const words = distinctiveWords(normalize(beer.name));
+      if (!words.some((w) => !STYLE_WORDS.has(w))) return [];
+      const found = words.map((w) => findInReadings(ocrReadings, w));
+      return found.every(Boolean) ? [{ beer, needle: words.join(' '), found: found.join(' ') }] : [];
+    });
+    for (const fit of fits) {
+      candidates.push({
+        beer: fit.beer,
+        field: 'name',
+        needle: fit.needle,
+        found: fit.found,
+        rejected: fits.length > 1 ? `several ${brewery} beers fit what was read` : undefined,
+      });
+    }
+  }
+
   // A label showing another brewery from our list, and not this beer's own,
   // is that other brewery's beer of the same name or style.
   const breweriesRead = new Set(candidates.filter((c) => c.field === 'brewery').map((c) => c.beer.brewery));
@@ -304,6 +341,25 @@ export function suggestByBrewery(candidates: MatchCandidate[], beers: Beer[]): B
   return beers
     .filter((beer) => breweries.has(beer.brewery))
     .sort((a, b) => Number(a.discontinued) - Number(b.discontinued) || a.name.localeCompare(b.name));
+}
+
+/**
+ * The words of a beer's name (as written in our list) that none of the label
+ * readings contain. A suggestion for "Peroni Nastro Azzurro Gluten Free" on a
+ * regular Peroni bottle, which contains gluten, is missing "Gluten Free".
+ */
+export function unseenNameWords(beer: Beer, texts: string[]): string[] {
+  const textReadings = texts.map(readings);
+  return beer.name.split(/\s+/).filter((word) => {
+    const tokens = normalize(word).split(' ').filter(Boolean);
+    return tokens.length > 0 && !tokens.every((t) => textReadings.some((r) => findInReadings(r, t)));
+  });
+}
+
+/** Whether a word of a beer's name is a gluten-free claim ("Gluten-Free", "Glutenfri", "Sin"). */
+export function isGlutenClaimWord(word: string): boolean {
+  const tokens = normalize(word).split(' ').filter(Boolean);
+  return tokens.length > 0 && tokens.every((t) => GLUTEN_CLAIM_WORDS.has(t));
 }
 
 /** Every beer name found in a menu's OCR text, including the ones the matcher discards. */

@@ -12,6 +12,36 @@ You are maintaining a JSON database of commercially available **gluten-free** an
 2. **Check existing beers for discontinuation.** For each beer in the list that is **not already** marked discontinued, check whether it is still in production / still offered by the brewery. If it has been discontinued, or the brewery has closed, set that beer's `"discontinued"` field to `true`.
 3. **Return the full updated JSON** (every existing beer plus any new ones).
 
+## Where to look — be exhaustive
+
+Do not stop after a few general searches. Past updates missed widely sold beers (Stella Artois Gluten Free, Magic Rock Fantasma, Cobra Gluten Free, Two Brothers Prairie Path) because the search was too shallow. Work country by country and use these sources, which have turned up many beers:
+
+- **National coeliac society lists** (most reliable; they list certified products):
+  - Finland: Keliakialiitto beer list — https://www.keliakialiitto.fi/kuluttajat/reseptit-ja-tuotteet/gluteenittomia-tuotteita-listauksia-tuoteryhmittain/oluet/
+  - Spain: FACE "Espiga Barrada" certified beers — https://celiacos.org/cervezas-sin-gluten/
+  - UK: Coeliac UK Crossed Grain products (Food and Drink Guide)
+  - Also check the equivalents for Italy (AIC, "spiga barrata"), France (AFDIAG), Sweden, Norway, Denmark, Germany (DZG), Australia (Coeliac Australia endorsement), etc.
+- **Curated guides and directories:**
+  - Italy/EU: https://www.beverfood.com/birre-gluten-free-tutte/ (long list of industrial and craft brands)
+  - UK: https://thegftable.co.uk/2025/11/09/best-gluten-free-beer-brands-a-complete-uk-guide/ (UK breweries whose whole range is gluten-free)
+  - UK blogs such as https://www.theglutenfreeblogger.com/gluten-free-beers-uk/
+  - US/Canada dedicated GF breweries: https://gluten.guide/post/gluten-free-beer-breweries/
+- **Supermarket "free from" ranges:** Tesco, Sainsbury's, Asda, Morrisons, Ocado, Systembolaget, Alko, Vinmonopolet, Dan Murphy's, etc.
+- **Big brewers' gluten-free variants:** mainstream brands often have a GF version (e.g. Stella Artois, Old Speckled Hen, Greene King IPA, BrewDog Punk IPA, Tennent's Light, Cruzcampo, Ámbar, Celia). Check each major brand.
+- **Breweries that made their whole range gluten-free:** many UK craft breweries (Bristol Beer Factory, Williams Bros, Little Ox, Purity, Siren…) add new GF beers regularly, so recheck their current core range every time.
+- **Brewery web shops:** many run on Shopify; `https://<domain>/products.json` lists every product with its description, which usually includes ABV and the gluten statement.
+
+## Pitfalls seen before
+
+- **"Low gluten" is not gluten-free.** Some beers are marketed as low gluten (up to 100 ppm), e.g. Original Small Beer lager. Do not add them.
+- **No ppm or gluten-free claim means don't add it.** An ingredient list without barley or wheat (e.g. Japanese malt-free "third beers") is not enough.
+- **Recalls:** check for gluten recalls before adding (e.g. Riedenburger's gluten-free beer was recalled after gluten was found).
+- **Batch-dependent beers:** skip beers where only some batches are certified (e.g. Siren The Pilot), and skip one-off seasonals.
+- **Renamed products:** check whether a "new" beer is an existing one under a new name (e.g. Hahn SuperDry GF became Hahn Ultra Crisp).
+- **Same name, different brewery:** generic names like "Lager", "Pale Ale" or "Craft Lager" exist for several breweries. Match on brewery + name, not name alone.
+- **Brewer no longer lists it:** if the brewery's own site has dropped a beer, check retailers; mark it discontinued rather than adding it as current.
+- **Missing ABV:** if the brewer doesn't publish an ABV, find it on a reliable retailer listing or leave the beer out. Don't guess.
+
 ## Hard rules — do not break these
 
 - **The gluten information MUST be correct.** This is critical — people with coeliac disease rely on it. For every new beer, verify against the brewery's own statements whether it is naturally gluten-free or gluten-removed, and set `glutenFree`, `glutenRemoved`, `grains`, and `ppm` accordingly. Do not guess. If you cannot confirm a beer's gluten status from a reliable source, do not add it.

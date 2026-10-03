@@ -1,4 +1,4 @@
-import { matchBeerByText, matchBeersInMenuText } from '../lib/match';
+import { findCanCandidates, matchBeerByText, matchBeersInMenuText, suggestByBrewery } from '../lib/match';
 import beersSeed from '../data/beers.json';
 import type { Beer, BeerData } from '../lib/db';
 import { statusFromFlags } from '../lib/status';
@@ -117,6 +117,32 @@ describe('matchBeerByText', () => {
 
   it('returns null for empty input', () => {
     expect(matchBeerByText('', beers)).toBeNull();
+  });
+});
+
+describe('suggestByBrewery', () => {
+  const suggest = (ocr: string) => suggestByBrewery(findCanCandidates(ocr, beers), beers);
+
+  it("suggests a brewery's beers when its name was read but the beer's wasn't", () => {
+    // A real scan: "Delicious IPA" is in a script font OCR reads as "Jekoiod".
+    expect(matchBeerByText('STONE\nJekoiod', beers)).toBeNull();
+    expect(suggest('STONE\nJekoiod').map((b) => b.name)).toEqual(['Delicious IPA']);
+  });
+
+  it("recognizes a brewery by its distinctive words, without 'Brasserie' or 'Brewing'", () => {
+    expect(suggest('BRUNEHAUT\nbière blonde').every((b) => b.brewery === 'Brasserie de Brunehaut')).toBe(true);
+    expect(suggest('BRUNEHAUT\nbière blonde')).not.toHaveLength(0);
+    expect(suggest('MOLSON COORS').every((b) => b.brewery === 'Coors / Molson Coors')).toBe(true);
+    expect(suggest('MOLSON COORS')).not.toHaveLength(0);
+  });
+
+  it('lists current beers before discontinued ones', () => {
+    const discontinued = suggest('GLUTENBERG').map((b) => b.discontinued);
+    expect(discontinued).toEqual([...discontinued].sort((a, b) => Number(a) - Number(b)));
+  });
+
+  it('suggests nothing when no brewery was read', () => {
+    expect(suggest('Some Barley Lager')).toEqual([]);
   });
 });
 

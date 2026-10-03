@@ -20,6 +20,7 @@ function scanReport(scan: DebugScan): string {
     `Mode: ${scan.mode}`,
     `Photo: ${scan.photo.width}x${scan.photo.height} px, ${scan.blocks.length} blocks, ${scan.durationMs} ms`,
     `Matched: ${scan.matches.map((b) => `${b.name} | ${b.brewery}`).join(', ') || 'nothing'}`,
+    ...(scan.suggestions.length ? [`Suggested: ${scan.suggestions.map((b) => `${b.name} | ${b.brewery}`).join(', ')}`] : []),
     'Expected: ',
     '',
     'Candidates:',
@@ -87,7 +88,9 @@ export default function ScanDebugScreen() {
         <Text style={styles.verdictTitle}>
           {scan.matches.length
             ? `Matched ${scan.matches.length === 1 ? scan.matches[0].name : `${scan.matches.length} beers`}`
-            : 'No match: the app would show the warning'}
+            : scan.suggestions.length
+              ? `No match: the app would suggest ${scan.suggestions.length} ${scan.suggestions[0].brewery} beer${scan.suggestions.length === 1 ? '' : 's'}`
+              : 'No match: the app would show the warning'}
         </Text>
         <Text style={styles.meta}>
           {scan.mode === 'menu' ? 'Menu' : 'Can or bottle'} · {scan.photo.width}×{scan.photo.height} px ·{' '}

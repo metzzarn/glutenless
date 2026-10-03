@@ -1,9 +1,10 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { listBeers } from '../lib/db';
+import { StatusBadge } from '../components/StatusBadge';
+import { listBeers, type Beer } from '../lib/db';
 import { scanPhoto } from '../lib/ocr';
 import { setLastScan, setScanDebugEnabled, useScanDebugEnabled } from '../lib/scanDebug';
 import { fonts, spacing, useColors, useStyles, type Palette } from '../lib/theme';
@@ -19,7 +20,7 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [ready, setReady] = useState(false);
   const [detecting, setDetecting] = useState(false);
-  const [notice, setNotice] = useState<{ title: string; body: string } | null>(null);
+  const [notice, setNotice] = useState<{ title: string; body: string; suggestions?: Beer[] } | null>(null);
   const debug = useScanDebugEnabled();
 
   useEffect(() => {
@@ -69,6 +70,16 @@ export default function CameraScreen() {
       });
     } else {
       const match = matches[0];
+      if (!match && scan.suggestions.length) {
+        const breweries = [...new Set(scan.suggestions.map((b) => b.brewery.replace(/\s*\(.*?\)/g, '')))];
+        const one = breweries.length === 1 ? breweries[0] : null;
+        setNotice({
+          title: one ? `We read “${one}” but not which beer` : 'We read the brewery but not which beer',
+          body: `If your beer is one of these, tap it. Other beers from ${one ?? 'these breweries'} aren't in our gluten-free list, so assume they contain gluten.`,
+          suggestions: scan.suggestions,
+        });
+        return;
+      }
       if (!match) {
         setNotice({
           title: 'Not in our gluten-free list',
@@ -133,6 +144,27 @@ export default function CameraScreen() {
         <View style={styles.noticeWrap} accessibilityRole="alert">
           <Text style={styles.noticeTitle}>{notice.title}</Text>
           <Text style={styles.noticeText}>{notice.body}</Text>
+          {notice.suggestions ? (
+            <ScrollView style={styles.suggestions} contentContainerStyle={{ gap: spacing(1.5) }}>
+              {notice.suggestions.map((beer) => (
+                <Pressable
+                  key={beer.id}
+                  style={styles.suggestion}
+                  onPress={() => router.replace({ pathname: '/beer/[id]', params: { id: String(beer.id) } })}
+                  accessibilityRole="button"
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.suggestionName} numberOfLines={1}>{beer.name}</Text>
+                    <Text style={styles.suggestionMeta} numberOfLines={1}>
+                      {beer.style}
+                      {beer.discontinued ? ' · discontinued' : ''}
+                    </Text>
+                  </View>
+                  <StatusBadge status={beer.status} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
         </View>
       ) : null}
 
@@ -198,6 +230,18 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   },
   noticeTitle: { color: '#F2CC7A', fontSize: 14.5, fontFamily: fonts.sansExtraBold },
   noticeText: { color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 18, fontFamily: fonts.sans },
+  suggestions: { maxHeight: 200, marginTop: spacing(1.5) },
+  suggestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(2.5),
+    paddingVertical: spacing(2.5),
+    paddingHorizontal: spacing(3),
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  suggestionName: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 14 },
+  suggestionMeta: { color: 'rgba(255,255,255,0.7)', fontFamily: fonts.sans, fontSize: 12, marginTop: 1 },
   shutterWrap: { alignItems: 'center', paddingVertical: spacing(5.5), gap: spacing(2.5) },
   shutter: {
     width: 66,

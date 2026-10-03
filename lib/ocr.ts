@@ -8,6 +8,7 @@ import {
   findMenuCandidates,
   matchBeerByText,
   matchBeersInMenuText,
+  suggestByBrewery,
   type MatchCandidate,
 } from './match';
 
@@ -23,6 +24,8 @@ export type PhotoScan = {
   text: string;
   /** Every name/brewery hit, including the ones the matcher discarded. */
   candidates: MatchCandidate[];
+  /** For a can with no match: our beers from a brewery that was read, for the person to pick from. */
+  suggestions: Beer[];
 };
 
 /**
@@ -53,13 +56,16 @@ export async function scanPhoto(photoUri: string, mode: ScanMode, beers: Beer[])
       blocks: result.blocks ?? [],
       text,
       candidates: findMenuCandidates(text, beers),
+      suggestions: [],
     };
   }
   const match = matchBeerByText(text, beers);
+  const candidates = findCanCandidates(text, beers);
   return {
     matches: match ? [match] : [],
     blocks: result.blocks ?? [],
     text,
-    candidates: findCanCandidates(text, beers),
+    candidates,
+    suggestions: match ? [] : suggestByBrewery(candidates, beers),
   };
 }

@@ -30,6 +30,26 @@ const BREWERY_STOP_WORDS = new Set([
   'brewing', 'beer', 'beers', 'brewery', 'breweries', 'co', 'company', 'the', 'craft',
 ]);
 
+/** Words a label can print around a brewery's name, or leave out of it. */
+const BREWERY_KEY_STOP_WORDS = new Set([
+  ...BREWERY_STOP_WORDS,
+  'brasserie', 'brauerei', 'privatbrauerei', 'bryggeri', 'brouwerij', 'birra',
+  'gluten', 'free', 'de', 'du',
+]);
+
+/**
+ * The distinctive words that show a brewery's own name was printed: "stone"
+ * for "Stone Brewing", "glutenberg" for "Glutenberg (Brasseurs Sans Gluten)",
+ * and each alternative of "Coors / Molson Coors".
+ */
+function breweryKeys(brewery: string): string[] {
+  return brewery
+    .replace(/\(.*?\)/g, '')
+    .split('/')
+    .map((part) => normalize(part).split(' ').filter((w) => w && !BREWERY_KEY_STOP_WORDS.has(w)).join(' '))
+    .filter((key) => key.length >= 3);
+}
+
 /** The single word most likely to identify a brewery in printed text, e.g. "Glutenberg" out of "Glutenberg (Brasseurs Sans Gluten)". */
 function breweryToken(brewery: string): string {
   const words = normalize(brewery.replace(/\(.*?\)/g, '')).split(' ').filter(Boolean);
@@ -154,19 +174,20 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
       candidates.push({ beer, field: 'name', needle: name, found: nameFound, rejected });
     }
 
-    // Listed once per brewery, so a recognized brewery shows up in debugging.
-    const brewery = normalize(beer.brewery);
-    if (!brewery || seenBreweries.has(brewery)) continue;
-    const breweryFound = findWords(ocrWords, brewery);
-    if (breweryFound) {
-      seenBreweries.add(brewery);
+    // Listed once per brewery: it identifies the brewery, not the beer.
+    if (seenBreweries.has(beer.brewery)) continue;
+    seenBreweries.add(beer.brewery);
+    for (const key of breweryKeys(beer.brewery)) {
+      const breweryFound = findWords(ocrWords, key);
+      if (!breweryFound) continue;
       candidates.push({
         beer,
         field: 'brewery',
-        needle: brewery,
+        needle: key,
         found: breweryFound,
         rejected: "a brewery alone doesn't say which of its beers this is",
       });
+      break;
     }
   }
   return candidates;
@@ -193,6 +214,19 @@ export function matchBeerByText(text: string, beers: Beer[]): Beer | null {
     }
   }
   return best?.beer ?? null;
+}
+
+/**
+ * When a label's brewery was read but none of our beer names were (Stone's
+ * "Delicious IPA" is in a script font OCR can't read), the beers we list from
+ * that brewery, for the person to pick from. Never a match on its own: the
+ * brewery also makes beers with gluten that aren't in our list.
+ */
+export function suggestByBrewery(candidates: MatchCandidate[], beers: Beer[]): Beer[] {
+  const breweries = new Set(candidates.filter((c) => c.field === 'brewery').map((c) => c.beer.brewery));
+  return beers
+    .filter((beer) => breweries.has(beer.brewery))
+    .sort((a, b) => Number(a.discontinued) - Number(b.discontinued) || a.name.localeCompare(b.name));
 }
 
 /** Every beer name found in a menu's OCR text, including the ones the matcher discards. */

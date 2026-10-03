@@ -1,7 +1,6 @@
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Beer } from '../lib/db';
-import { useStatusMeta } from '../lib/status';
 import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 import { DiscontinuedBadge } from './DiscontinuedBadge';
 import { StatusBadge } from './StatusBadge';
@@ -17,19 +16,20 @@ export const BeerRow = memo(function BeerRow({
   onPress: (id: number) => void;
   onToggleFavorite: (id: number) => void;
 }) {
-  const meta = useStatusMeta(beer.status);
   const colors = useColors();
   const styles = useStyles(makeStyles);
   return (
     <Pressable style={styles.row} onPress={() => onPress(beer.id)} accessibilityRole="button">
-      <View style={[styles.dot, { backgroundColor: meta.dot }]} />
       <View style={styles.textCol}>
         <Text style={styles.name} numberOfLines={1}>
           {beer.name}
         </Text>
-        <Text style={styles.subtitle} numberOfLines={1}>
-          {beer.brewery} · {beer.style}
-        </Text>
+        <View style={styles.subtitleRow}>
+          <Text style={[styles.subtitle, styles.subtitleText]} numberOfLines={1}>
+            {beer.brewery} · {beer.style}
+          </Text>
+          <Text style={[styles.subtitle, styles.abv]}>{' · '}{beer.abv}%</Text>
+        </View>
       </View>
       {beer.discontinued ? <DiscontinuedBadge /> : null}
       <StatusBadge status={beer.status} />
@@ -63,10 +63,12 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     paddingVertical: spacing(2.5),
     paddingHorizontal: spacing(2.75),
   },
-  dot: { width: 8, height: 8, borderRadius: 4 },
   textCol: { flex: 1, minWidth: 0 },
   name: { fontFamily: fonts.sansBold, fontSize: 14.5, color: colors.ink },
-  subtitle: { fontFamily: fonts.sans, fontSize: 12, color: colors.textMuted2, marginTop: 2 },
+  subtitleRow: { flexDirection: 'row', marginTop: 2 },
+  subtitle: { fontFamily: fonts.sans, fontSize: 12, color: colors.textMuted2 },
+  subtitleText: { flexShrink: 1 },
+  abv: { flexShrink: 0, fontVariant: ['tabular-nums'] },
   favButton: { paddingLeft: spacing(1) },
   fav: { fontSize: 17 },
 });

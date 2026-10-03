@@ -51,6 +51,16 @@
           "speechRecognitionPermission": "Glutenless converts your speech to text to search for a beer by name.",
           "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
+      ],
+      "./modules/label-reader/app.plugin.js",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.2.21",
+            "minSdkVersion": 26
+          }
+        }
       ]
     ]
   }

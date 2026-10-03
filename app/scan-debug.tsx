@@ -1,33 +1,102 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { normalizeOcrText } from '../lib/match';
+import {
+  AI_VARIANTS,
+  agreedText,
+  downloadAiModel,
+  getAiStatus,
+  matchAiText,
+  readLabelWithAi,
+  type AiLabelReading,
+  type AiVariant,
+  type LabelReaderStatus,
+} from '../lib/aiLabel';
+import { listBeers, type Beer } from '../lib/db';
+import { normalizeOcrText, type MatchCandidate } from '../lib/match';
 import { getLastScan, type DebugScan } from '../lib/scanDebug';
 import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
 const mono = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
-/** A plain-text report of a scan, for pasting into a test fixture or an issue. */
-function scanReport(scan: DebugScan): string {
-  const candidates = scan.candidates.map(
+/** Whether Gemini Nano can run for this scan at all. */
+type AiStatus = LabelReaderStatus | 'checking' | 'downloading' | 'cansOnly';
+
+/** One setup's reading of the photo. */
+type VariantResult =
+  | { state: 'waiting' | 'running' | 'downloading' }
+  | { state: 'done'; reading: AiLabelReading }
+  | { state: 'error'; message: string };
+
+/** What the camera would do with these results, in one line. */
+function verdict({ matches, suggestions }: { matches: Beer[]; suggestions: Beer[] }): string {
+  if (matches.length) return `Matched ${matches.length === 1 ? matches[0].name : `${matches.length} beers`}`;
+  if (suggestions.length) {
+    return `No match: the app would suggest ${suggestions.length} ${suggestions[0].brewery} beer${suggestions.length === 1 ? '' : 's'}`;
+  }
+  return 'No match: the app would show the warning';
+}
+
+function candidateLines(candidates: MatchCandidate[]): string[] {
+  const lines = candidates.map(
     (c) =>
       `- ${c.field === 'brewery' ? `Brewery ${c.beer.brewery}` : `${c.beer.name} | ${c.beer.brewery}`}` +
       ` (${c.field} "${c.needle}"${c.found !== c.needle ? ` read as "${c.found}"` : ''})` +
       (c.rejected ? ` REJECTED: ${c.rejected}` : ''),
   );
+  return lines.length ? lines : ['(none)'];
+}
+
+const beerList = (beers: Beer[]) => beers.map((b) => `${b.name} | ${b.brewery}`).join(', ');
+
+function readingLines(reading: AiLabelReading): string[] {
+  return [
+    `Matched: ${beerList(reading.matches) || 'nothing'}`,
+    ...(reading.suggestions.length ? [`Suggested: ${beerList(reading.suggestions)}`] : []),
+    'Candidates:',
+    ...candidateLines(reading.candidates),
+    'Text:',
+    reading.text,
+  ];
+}
+
+/** A plain-text report of a scan, for pasting into a test fixture or an issue. */
+function scanReport(
+  scan: DebugScan,
+  aiStatus: AiStatus,
+  results: Record<string, VariantResult>,
+  agreed: AiLabelReading | null,
+): string {
+  const aiLines =
+    aiStatus !== 'available'
+      ? [`Not run: ${aiStatus}`]
+      : [
+          ...AI_VARIANTS.flatMap((variant) => {
+            const result = results[variant.id];
+            const head = `## ${variant.label}`;
+            if (result?.state === 'done') return [head, `Time: ${result.reading.durationMs} ms`, ...readingLines(result.reading), ''];
+            if (result?.state === 'error') return [head, `Error: ${result.message}`, ''];
+            return [head, `Not finished: ${result?.state ?? 'waiting'}`, ''];
+          }),
+          '## Words most large-text readings agree on',
+          ...(agreed ? readingLines(agreed) : ['(fewer than two readings)']),
+        ];
   return [
     `Mode: ${scan.mode}`,
     `Photo: ${scan.photo.width}x${scan.photo.height} px, ${scan.blocks.length} blocks, ${scan.durationMs} ms`,
-    `Matched: ${scan.matches.map((b) => `${b.name} | ${b.brewery}`).join(', ') || 'nothing'}`,
-    ...(scan.suggestions.length ? [`Suggested: ${scan.suggestions.map((b) => `${b.name} | ${b.brewery}`).join(', ')}`] : []),
+    `Matched: ${beerList(scan.matches) || 'nothing'}`,
+    ...(scan.suggestions.length ? [`Suggested: ${beerList(scan.suggestions)}`] : []),
     'Expected: ',
     '',
     'Candidates:',
-    ...(candidates.length ? candidates : ['(none)']),
+    ...candidateLines(scan.candidates),
     '',
     'OCR text:',
     scan.text,
+    '',
+    '--- Gemini Nano ---',
+    ...aiLines,
   ].join('\n');
 }
 
@@ -38,6 +107,52 @@ export default function ScanDebugScreen() {
   const styles = useStyles(makeStyles);
   const [scan] = useState(getLastScan);
   const [photoWidth, setPhotoWidth] = useState(0);
+  const [aiStatus, setAiStatus] = useState<AiStatus>('checking');
+  const [results, setResults] = useState<Record<string, VariantResult>>({});
+  const [beers, setBeers] = useState<Beer[]>([]);
+  const setResult = (id: string, result: VariantResult) => setResults((r) => ({ ...r, [id]: result }));
+
+  const runVariant = async (variant: AiVariant, beers: Beer[], download = false) => {
+    if (!scan) return;
+    try {
+      if (download) {
+        setResult(variant.id, { state: 'downloading' });
+        await downloadAiModel(variant.options);
+      }
+      setResult(variant.id, { state: 'running' });
+      setResult(variant.id, { state: 'done', reading: await readLabelWithAi(scan.photo.uri, beers, variant) });
+    } catch (e) {
+      setResult(variant.id, { state: 'error', message: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  // Gemini Nano reads the same photo with each setup in turn, so they can be
+  // compared with ML Kit and with each other. One at a time: the model runs
+  // one request at a time anyway.
+  const runAi = async (download: boolean) => {
+    if (!scan) return;
+    try {
+      if (download) {
+        setAiStatus('downloading');
+        await downloadAiModel();
+      }
+      const status = await getAiStatus();
+      setAiStatus(status);
+      if (status !== 'available') return;
+      const beers = await listBeers('all', '');
+      setBeers(beers);
+      setResults(Object.fromEntries(AI_VARIANTS.map((v) => [v.id, { state: 'waiting' }])));
+      for (const variant of AI_VARIANTS) await runVariant(variant, beers);
+    } catch {
+      setAiStatus('unavailable');
+    }
+  };
+
+  useEffect(() => {
+    // The prompts are written for a single label; menus aren't compared yet.
+    if (scan?.mode === 'can') runAi(false);
+    else setAiStatus('cansOnly');
+  }, []);
 
   if (!scan) {
     return (
@@ -51,6 +166,10 @@ export default function ScanDebugScreen() {
   const scale = photoWidth / scan.photo.width;
   const lines = scan.blocks.flatMap((block) => block.lines);
   const matchedIds = new Set(scan.matches.map((b) => b.id));
+
+  const largeTextReadings = AI_VARIANTS.map((v) => results[v.id])
+    .flatMap((r) => (r?.state === 'done' ? [r.reading] : []));
+  const agreed = largeTextReadings.length >= 2 ? matchAiText(agreedText(largeTextReadings.map((r) => r.text)), beers) : null;
 
   const openResult = () => {
     if (scan.mode === 'menu') {
@@ -77,7 +196,7 @@ export default function ScanDebugScreen() {
         <Text style={styles.title}>Scan debug</Text>
         <Pressable
           style={styles.shareButton}
-          onPress={() => Share.share({ message: scanReport(scan) })}
+          onPress={() => Share.share({ message: scanReport(scan, aiStatus, results, agreed) })}
           accessibilityRole="button"
         >
           <Text style={styles.shareText}>Share report</Text>
@@ -85,13 +204,8 @@ export default function ScanDebugScreen() {
       </View>
 
       <View style={styles.verdict}>
-        <Text style={styles.verdictTitle}>
-          {scan.matches.length
-            ? `Matched ${scan.matches.length === 1 ? scan.matches[0].name : `${scan.matches.length} beers`}`
-            : scan.suggestions.length
-              ? `No match: the app would suggest ${scan.suggestions.length} ${scan.suggestions[0].brewery} beer${scan.suggestions.length === 1 ? '' : 's'}`
-              : 'No match: the app would show the warning'}
-        </Text>
+        <Text style={styles.meta}>ML Kit text recognition</Text>
+        <Text style={styles.verdictTitle}>{verdict(scan)}</Text>
         <Text style={styles.meta}>
           {scan.mode === 'menu' ? 'Menu' : 'Can or bottle'} · {scan.photo.width}×{scan.photo.height} px ·{' '}
           {scan.blocks.length} blocks · {lines.length} lines ·{' '}
@@ -103,6 +217,72 @@ export default function ScanDebugScreen() {
           </Pressable>
         ) : null}
       </View>
+
+      <Text style={styles.sectionTitle}>Gemini Nano (on-device AI)</Text>
+      {aiStatus !== 'available' ? (
+        <View style={styles.verdict}>
+          <Text style={styles.verdictTitle}>
+            {aiStatus === 'checking'
+              ? 'Checking…'
+              : aiStatus === 'downloading'
+                ? 'Downloading the model…'
+                : aiStatus === 'cansOnly'
+                  ? 'Only compared for cans and bottles'
+                  : aiStatus === 'downloadable'
+                    ? 'Supported, but not downloaded yet'
+                    : aiStatus === 'unavailable'
+                      ? 'Not available on this phone'
+                      : 'The phone is downloading the model'}
+          </Text>
+          {aiStatus === 'downloadable' || aiStatus === 'downloading' ? (
+            <Pressable onPress={() => runAi(aiStatus === 'downloadable')} accessibilityRole="button">
+              <Text style={styles.link}>{aiStatus === 'downloadable' ? 'Download and read →' : 'Check again →'}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : (
+        <View style={{ gap: spacing(2.5) }}>
+          {agreed ? (
+            <View style={styles.verdict}>
+              <Text style={styles.meta}>Words most large-text readings agree on</Text>
+              <Text style={styles.verdictTitle}>{verdict(agreed)}</Text>
+              <Text selectable style={[styles.code, { marginTop: spacing(2) }]}>{agreed.text || '(none)'}</Text>
+            </View>
+          ) : null}
+          {AI_VARIANTS.map((variant) => {
+            const result = results[variant.id];
+            return (
+              <View key={variant.id} style={styles.verdict}>
+                <Text style={styles.meta}>{variant.label}</Text>
+                {result?.state === 'done' ? (
+                  <>
+                    <Text style={styles.verdictTitle}>{verdict(result.reading)}</Text>
+                    <Text style={styles.meta}>{result.reading.durationMs} ms</Text>
+                    <Text selectable style={[styles.code, { marginTop: spacing(2) }]}>{result.reading.text || '(none)'}</Text>
+                  </>
+                ) : result?.state === 'error' ? (
+                  <>
+                    <Text style={styles.verdictTitle}>Failed</Text>
+                    <Text selectable style={styles.meta}>{result.message}</Text>
+                    {result.message.includes('downloadable') ? (
+                      <Pressable
+                        onPress={() => runVariant(variant, beers, true)}
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.link}>Download this model and read →</Text>
+                      </Pressable>
+                    ) : null}
+                  </>
+                ) : (
+                  <Text style={styles.verdictTitle}>
+                    {result?.state === 'running' ? 'Reading…' : result?.state === 'downloading' ? 'Downloading…' : 'Waiting…'}
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       <Text style={styles.sectionTitle}>What the camera read</Text>
       <View

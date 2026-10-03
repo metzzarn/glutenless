@@ -1,0 +1,21 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.labelreader'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.labelreader"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}
+
+dependencies {
+  // Gemini Nano through Android AICore. Compiled with Kotlin 2.3, so the app
+  // needs Kotlin 2.2.21+ (set via expo-build-properties in app.json).
+  implementation 'com.google.mlkit:genai-prompt:1.0.0-beta4'
+}

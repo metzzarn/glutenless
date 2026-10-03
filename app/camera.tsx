@@ -1,10 +1,10 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBadge } from '../components/StatusBadge';
+import { ZoomableCamera } from '../components/ZoomableCamera';
 import { identifyWithAi } from '../lib/aiLabel';
 import { listBeers, type Beer } from '../lib/db';
 import { isGlutenClaimWord, unseenNameWords } from '../lib/match';
@@ -49,8 +49,6 @@ export default function CameraScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [ready, setReady] = useState(false);
-  const [zoom, setZoom] = useState(0);
-  const zoomRef = useRef(0);
   const isFocused = useIsFocused();
   const [detecting, setDetecting] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -78,21 +76,6 @@ export default function CameraScreen() {
     [router],
   );
 
-  // Pinch to zoom. expo-camera's zoom is 0–1 of the phone's maximum, so each
-  // doubling of the pinch adds a quarter of the range.
-  const updateZoom = useCallback((next: number) => {
-    zoomRef.current = Math.min(1, Math.max(0, next));
-    setZoom(zoomRef.current);
-  }, []);
-  const pinch = useMemo(() => {
-    let zoomAtStart = 0;
-    return Gesture.Pinch()
-      .runOnJS(true)
-      .onStart(() => {
-        zoomAtStart = zoomRef.current;
-      })
-      .onUpdate((e) => updateZoom(zoomAtStart + Math.log2(e.scale) * 0.25));
-  }, [updateZoom]);
 
   const takePhoto = useCallback(async () => {
     if (!cameraRef.current || !ready) return;
@@ -196,24 +179,12 @@ export default function CameraScreen() {
         ) : null}
       </View>
 
-      <GestureDetector gesture={pinch}>
-        <View style={styles.camera}>
-          {isFocused ? (
-            <CameraView
-              ref={cameraRef}
-              style={StyleSheet.absoluteFill}
-              facing="back"
-              zoom={zoom}
-              onCameraReady={() => setReady(true)}
-            />
-          ) : null}
-          {zoom > 0.01 ? (
-            <Pressable style={styles.zoomPill} onPress={() => updateZoom(0)} accessibilityRole="button">
-              <Text style={styles.zoomPillText}>Zoomed · tap to reset</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </GestureDetector>
+      <ZoomableCamera
+        cameraRef={cameraRef}
+        active={isFocused}
+        onCameraReady={() => setReady(true)}
+        style={styles.camera}
+      />
 
       <View style={styles.hintWrap} pointerEvents="none">
         <Text style={styles.hint}>
@@ -331,16 +302,6 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
   },
-  zoomPill: {
-    position: 'absolute',
-    bottom: spacing(3),
-    alignSelf: 'center',
-    paddingHorizontal: spacing(3),
-    paddingVertical: spacing(1.5),
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  zoomPillText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 12 },
   hintWrap: { position: 'absolute', top: '42%', left: 0, right: 0, alignItems: 'center' },
   hint: {
     color: 'rgba(255,255,255,0.75)',

@@ -6,7 +6,7 @@
     "scheme": "glutenless",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.glutenless.app",
@@ -31,7 +31,8 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "beersUrl": "https://raw.githubusercontent.com/metzzarn/glutenless/main/data/beers.json"
+      "beersUrl": "https://raw.githubusercontent.com/metzzarn/glutenless/main/data/beers.json",
+      "beersVersionUrl": "https://raw.githubusercontent.com/metzzarn/glutenless/main/data/beers-version.json"
     },
     "plugins": [
       "expo-router",

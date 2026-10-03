@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { FILTERS, type FilterKey } from '../lib/status';
-import { colors, fonts, radii, spacing } from '../lib/theme';
+import { fonts, radii, spacing, useStyles, type Palette } from '../lib/theme';
 
 export function FilterChips({
   active,
@@ -9,6 +9,7 @@ export function FilterChips({
   active: FilterKey;
   onChange: (key: FilterKey) => void;
 }) {
+  const styles = useStyles(makeStyles);
   return (
     <ScrollView
       horizontal
@@ -22,6 +23,8 @@ export function FilterChips({
           <TouchableOpacity
             key={f.key}
             onPress={() => onChange(f.key)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
             style={[styles.chip, isActive && styles.chipActive]}
           >
             <Text style={[styles.label, isActive && styles.labelActive]}>{f.label}</Text>
@@ -32,18 +35,18 @@ export function FilterChips({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   scroll: { flexGrow: 0, flexShrink: 0 },
   row: { flexDirection: 'row', gap: spacing(1.75), paddingBottom: spacing(2), paddingTop: spacing(2) },
   chip: {
     paddingHorizontal: spacing(3.25),
     paddingVertical: spacing(1.5),
     borderRadius: radii.pill,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
   chipActive: { backgroundColor: colors.brand, borderColor: colors.brand },
   label: { fontFamily: fonts.sansBold, fontSize: 12.5, color: colors.textMuted },
-  labelActive: { color: colors.white },
+  labelActive: { color: colors.onBrand },
 });

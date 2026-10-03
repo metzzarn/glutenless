@@ -1,16 +1,19 @@
-import { colors } from './theme';
+import { useColors } from './theme';
 
 export type GlutenStatus = 'free' | 'low';
 
 export type FilterKey = 'all' | GlutenStatus | 'favorite';
 
-export const STATUS_META: Record<
-  GlutenStatus,
-  { label: string; badge: string; text: string; bg: string; dot: string }
-> = {
-  free: { label: 'Gluten-Free', badge: 'GF', ...colors.statusFree },
-  low: { label: 'Gluten-Removed', badge: 'GR', ...colors.statusLow },
+export const STATUS_META: Record<GlutenStatus, { label: string; badge: string }> = {
+  free: { label: 'Gluten-Free', badge: 'GF' },
+  low: { label: 'Gluten-Removed', badge: 'GR' },
 };
+
+/** A status's label and badge together with its colors for the current light/dark palette. */
+export function useStatusMeta(status: GlutenStatus) {
+  const colors = useColors();
+  return { ...STATUS_META[status], ...colors.status[status] };
+}
 
 export const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'All' },

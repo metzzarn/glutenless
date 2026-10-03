@@ -9,9 +9,10 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { colors, fonts, radii, spacing } from '../lib/theme';
+import { fonts, radii, spacing, useStyles, type Palette } from '../lib/theme';
 
 function Bar({ delay }: { delay: number }) {
+  const styles = useStyles(makeStyles);
   const height = useSharedValue(8);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export function ListeningOverlay({
   visible: boolean;
   onCancel: () => void;
 }) {
+  const styles = useStyles(makeStyles);
   const pulse = useSharedValue(1);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function ListeningOverlay({
           ))}
         </View>
         <Text style={styles.label}>Listening — say a beer name…</Text>
-        <Pressable style={styles.cancel} onPress={onCancel}>
+        <Pressable style={styles.cancel} onPress={onCancel} accessibilityRole="button">
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
       </View>
@@ -79,7 +81,7 @@ export function ListeningOverlay({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.listeningBg,

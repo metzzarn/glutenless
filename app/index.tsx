@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BeerRow } from '../components/BeerRow';
 import { CameraSheet } from '../components/CameraSheet';
@@ -8,27 +8,43 @@ import { FilterChips } from '../components/FilterChips';
 import { ListeningOverlay } from '../components/ListeningOverlay';
 import { SearchBar } from '../components/SearchBar';
 import { SyncPill, type SyncStatus } from '../components/SyncPill';
-import { listBeers, toggleFavorite, type Beer } from '../lib/db';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { filterBeers, listBeers, toggleFavorite, type Beer } from '../lib/db';
 import { useVoiceSearch } from '../lib/speech';
-import { syncFromServer } from '../lib/sync';
+import { countLabel, freshnessLabel } from '../lib/labels';
+import { getLastSync, syncFromServer, type LastSync } from '../lib/sync';
 import type { FilterKey } from '../lib/status';
-import { colors, fonts, spacing } from '../lib/theme';
+import { fonts, spacing, useStyles, type Palette } from '../lib/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const styles = useStyles(makeStyles);
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
-  const [beers, setBeers] = useState<Beer[]>([]);
+  // null until the first load finishes, so the empty-list message can't flash on launch.
+  const [allBeers, setAllBeers] = useState<Beer[] | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('offline');
+  const [lastSync, setLastSync] = useState<LastSync | null>(getLastSync);
   const syncingRef = useRef(false);
   const failedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    listBeers(filter, query).then(setBeers);
-  }, [filter, query]);
+  // The whole list is loaded once and filtered in memory, so switching tabs
+  // or typing a search never waits on the database.
+  const beers = useMemo(() => filterBeers(allBeers ?? [], filter, query), [allBeers, filter, query]);
+
+  const loadBeers = useCallback(async () => {
+    setAllBeers(await listBeers());
+  }, []);
+
+  // On focus rather than on mount, to pick up favorites toggled on the detail screen.
+  useFocusEffect(
+    useCallback(() => {
+      loadBeers();
+    }, [loadBeers])
+  );
 
   const runSync = useCallback(async () => {
     if (syncingRef.current) return;
@@ -40,19 +56,17 @@ export default function HomeScreen() {
     syncingRef.current = false;
     if (ok) {
       setSyncStatus('synced');
-      listBeers(filter, query).then(setBeers);
+      setLastSync(getLastSync());
+      loadBeers();
     } else {
       setSyncStatus('failed');
       failedTimerRef.current = setTimeout(() => setSyncStatus('offline'), 2500);
     }
-  }, [filter, query]);
+  }, [loadBeers]);
 
   useEffect(() => {
     runSync();
-    // Deliberately once-on-mount: runSync's filter/query deps would
-    // otherwise trigger a network sync on every search/filter change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [runSync]);
 
   useEffect(() => () => {
     if (failedTimerRef.current) clearTimeout(failedTimerRef.current);
@@ -74,13 +88,16 @@ export default function HomeScreen() {
   const handleToggleFavorite = useCallback(
     async (id: number) => {
       const favorite = await toggleFavorite(id);
-      setBeers((prev) =>
-        filter === 'favorite' && !favorite
-          ? prev.filter((b) => b.id !== id)
-          : prev.map((b) => (b.id === id ? { ...b, favorite } : b))
-      );
+      setAllBeers((prev) => prev && prev.map((b) => (b.id === id ? { ...b, favorite } : b)));
     },
-    [filter]
+    []
+  );
+
+  const renderBeer = useCallback(
+    ({ item }: { item: Beer }) => (
+      <BeerRow beer={item} onPress={openBeer} onToggleFavorite={handleToggleFavorite} />
+    ),
+    [openBeer, handleToggleFavorite]
   );
 
   const startScan = useCallback(
@@ -95,12 +112,15 @@ export default function HomeScreen() {
     <View style={[styles.container, { paddingTop: insets.top + spacing(3) }]}>
       <View style={styles.header}>
         <View style={styles.brandRow}>
-          <View style={styles.logoBadge}>
-            <View style={styles.logoGlyph} />
+          <View style={styles.logoDisc}>
+            <Image source={require('../assets/header_icon.png')} style={styles.logo} />
           </View>
           <Text style={styles.title}>Glutenless</Text>
         </View>
-        <SyncPill status={syncStatus} onPress={runSync} />
+        <View style={styles.headerActions}>
+          <ThemeToggle />
+          <SyncPill status={syncStatus} onPress={runSync} />
+        </View>
       </View>
 
       <SearchBar
@@ -112,25 +132,34 @@ export default function HomeScreen() {
 
       <FilterChips active={filter} onChange={setFilter} />
 
+      {allBeers && (
+        <View style={styles.infoRow}>
+          <Text style={styles.count} numberOfLines={1}>
+            {beers.length > 0 ? countLabel(beers.length, filter, query) : ''}
+          </Text>
+          <Text style={styles.freshness}>{freshnessLabel(lastSync)}</Text>
+        </View>
+      )}
+
+      {/* Keyed by tab: a tab change starts a fresh list at the top that mounts only
+          the first screenful, instead of re-rendering the whole off-screen window. */}
       <FlatList
+        key={filter}
+        initialNumToRender={12}
         style={styles.list}
         data={beers}
         keyExtractor={(b) => String(b.id)}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <BeerRow
-            beer={item}
-            onPress={() => openBeer(item.id)}
-            onToggleFavorite={() => handleToggleFavorite(item.id)}
-          />
-        )}
-        ItemSeparatorComponent={() => <View style={{ height: spacing(2) }} />}
+        renderItem={renderBeer}
+        ItemSeparatorComponent={Separator}
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            {filter === 'favorite' && !query.trim()
-              ? "No favorites yet — open a beer's detail page and tap the heart to add one."
-              : `No beers match "${query}". Try voice or photo search instead.`}
-          </Text>
+          allBeers ? (
+            <Text style={styles.empty}>
+              {filter === 'favorite' && !query.trim()
+                ? "No favorites yet — open a beer's detail page and tap the heart to add one."
+                : `No beers match "${query}". Try voice or photo search instead.`}
+            </Text>
+          ) : null
         }
       />
 
@@ -145,7 +174,14 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Defined at module level: an inline component would be a new type on every
+// render and remount every separator in the list.
+function Separator() {
+  const styles = useStyles(makeStyles);
+  return <View style={styles.separator} />;
+}
+
+const makeStyles = (colors: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing(4.5) },
   header: {
     flexDirection: 'row',
@@ -153,18 +189,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing(3.5),
   },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
-  logoBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    backgroundColor: colors.accentIconBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoGlyph: { width: 9, height: 12, borderRadius: 3, backgroundColor: colors.cream2 },
+  logoDisc: { borderRadius: 16, backgroundColor: colors.logoBg },
+  // The symbol only fills about half of the image; negative margin trims the empty border.
+  logo: { width: 56, height: 56, margin: -12 },
   title: { fontFamily: fonts.serif, fontSize: 19, color: colors.ink },
+  infoRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing(2), marginBottom: spacing(2) },
+  count: { flex: 1, fontFamily: fonts.sans, fontSize: 12.5, color: colors.textMuted3 },
+  freshness: { fontFamily: fonts.sans, fontSize: 11.5, color: colors.textMuted3 },
   list: { flex: 1 },
+  separator: { height: spacing(2) },
   listContent: { paddingBottom: spacing(6) },
   empty: {
     textAlign: 'center',

@@ -4,12 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BeerCard } from '../components/BeerCard';
 import { getBeerById, type Beer } from '../lib/db';
-import { colors, fonts, spacing } from '../lib/theme';
+import { fonts, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
 export default function ResultsScreen() {
   const { ids } = useLocalSearchParams<{ ids: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
 
   const [beers, setBeers] = useState<Beer[]>([]);
   const [index, setIndex] = useState(0);
@@ -29,7 +31,12 @@ export default function ResultsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing(3) }]}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
         <Text style={styles.title}>Found {beers.length} beers on menu</Text>
@@ -61,7 +68,7 @@ export default function ResultsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing(4.5) },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing(2.5), marginBottom: spacing(5) },
   backButton: {

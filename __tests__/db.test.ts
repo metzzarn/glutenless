@@ -1,6 +1,19 @@
 import * as SQLite from 'expo-sqlite';
-import { buildSearchClause, initDb, listBeers, getBeerById, toggleFavorite } from '../lib/db';
+import {
+  buildSearchClause,
+  filterBeers,
+  initDb,
+  listBeers,
+  getBeerById,
+  toggleFavorite,
+  setPersonalNote,
+  upsertBeers,
+  type Beer,
+  type BeerData,
+} from '../lib/db';
+import { Storage } from 'expo-sqlite/kv-store';
 import beersSeed from '../data/beers.json';
+import { BUNDLED_VERSION, getLocalVersion, setLocalVersion } from '../lib/dataVersion';
 
 describe('buildSearchClause', () => {
   it('has no WHERE clause for the "all" filter with no query', () => {
@@ -43,8 +56,40 @@ describe('buildSearchClause', () => {
   });
 });
 
+describe('filterBeers', () => {
+  const beer = (over: Partial<Beer>) => ({ status: 'free', favorite: false, ...over }) as Beer;
+  const beers = [
+    beer({ id: 1, name: 'Grapefruit IPA', brewery: 'Ghostfish' }),
+    beer({ id: 2, name: 'Daura', brewery: 'Damm', status: 'low' }),
+    beer({ id: 3, name: 'Blonde', brewery: 'Glutenberg', favorite: true }),
+  ];
+  const ids = (filter: Parameters<typeof filterBeers>[1], query = '') =>
+    filterBeers(beers, filter, query).map((b) => b.id);
+
+  it('returns everything, in order, for "all" with no query', () => {
+    expect(ids('all')).toEqual([1, 2, 3]);
+  });
+
+  it('filters by status and by favorite', () => {
+    expect(ids('free')).toEqual([1, 3]);
+    expect(ids('low')).toEqual([2]);
+    expect(ids('favorite')).toEqual([3]);
+  });
+
+  it('matches name or brewery, ignoring case and surrounding spaces', () => {
+    expect(ids('all', ' ipa ')).toEqual([1]);
+    expect(ids('all', 'DAMM')).toEqual([2]);
+  });
+
+  it('combines the tab filter with the query', () => {
+    expect(ids('free', 'gl')).toEqual([3]);
+    expect(ids('low', 'ipa')).toEqual([]);
+  });
+});
+
 describe('db seeding + queries', () => {
   beforeAll(async () => {
+    Storage.clearSync();
     await initDb();
   });
 
@@ -66,55 +111,108 @@ describe('db seeding + queries', () => {
   });
 
   it('rebuilds a pre-existing table missing columns or with a stale NOT NULL ibu, without losing data', async () => {
-    const db = (await SQLite.openDatabaseAsync('glutenless.db')) as unknown as {
-      columns: Map<string, { notnull: boolean }>;
-    };
-    // Simulate an app installed on an older schema: missing `discontinued`,
-    // and still carrying the original `ibu INTEGER NOT NULL` constraint that
-    // the current dataset (which has null ibu values) can't satisfy.
-    db.columns.delete('discontinued');
-    db.columns.set('ibu', { notnull: true });
+    const db = await SQLite.openDatabaseAsync('glutenless.db');
+    // Simulate an app installed on an older schema: no `discontinued` or
+    // `personalNote`, and still the original `ibu INTEGER NOT NULL` constraint
+    // that the current dataset (which has null ibu values) can't satisfy.
+    const seed = beersSeed.find((b) => b.id === 1)!;
+    await db.execAsync(`
+      DROP TABLE beers;
+      CREATE TABLE beers (
+        id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, brewery TEXT NOT NULL,
+        style TEXT NOT NULL, abv REAL NOT NULL, ibu INTEGER NOT NULL, status TEXT NOT NULL,
+        ppm TEXT NOT NULL, glutenFree INTEGER NOT NULL DEFAULT 0, glutenRemoved INTEGER NOT NULL DEFAULT 0,
+        country TEXT NOT NULL DEFAULT '', grains TEXT NOT NULL DEFAULT '[]', note TEXT NOT NULL,
+        breweryUrl TEXT NOT NULL DEFAULT '', confirmed TEXT NOT NULL DEFAULT '[]',
+        favorite INTEGER NOT NULL DEFAULT 0
+      );
+    `);
+    await db.runAsync(
+      `INSERT INTO beers (id, name, brewery, style, abv, ibu, status, ppm, note, favorite)
+       VALUES (?, ?, ?, ?, ?, ?, 'free', ?, ?, 1)`,
+      [seed.id, seed.name, seed.brewery, seed.style, seed.abv, seed.ibu ?? 0, seed.ppm, seed.note]
+    );
 
     await expect(initDb()).resolves.not.toThrow();
 
-    expect(db.columns.has('discontinued')).toBe(true);
-    expect(db.columns.get('ibu')?.notnull).toBe(false);
+    const columns = await db.getAllAsync<{ name: string; notnull: number }>('PRAGMA table_info(beers)');
+    const column = (name: string) => columns.find((c) => c.name === name);
+    expect(column('discontinued')).toBeDefined();
+    expect(column('personalNote')).toBeDefined();
+    expect(column('ibu')?.notnull).toBe(0);
 
     expect(await listBeers('all', '')).toHaveLength(beersSeed.length);
-    const daura = await getBeerById(129);
-    expect(daura?.name).toBe('Daura Damm');
-    expect(daura?.country).toBe('Spain');
+    const upgraded = await getBeerById(1);
+    expect(upgraded?.favorite).toBe(true);
+    expect(upgraded?.personalNote).toBe('');
+    expect(upgraded?.grains).toEqual(seed.grains);
+    await toggleFavorite(1);
   });
 
   it('removes rows that are no longer in data/beers.json instead of orphaning them', async () => {
-    const db = (await SQLite.openDatabaseAsync('glutenless.db')) as unknown as {
-      rows: Record<string, unknown>[];
-    };
-    db.rows.push({
-      id: 999999,
-      name: 'Discontinued Ale',
-      brewery: 'Defunct Brewing',
-      style: 'Ghost',
-      abv: 5,
-      ibu: 5,
-      status: 'free',
-      ppm: '<20 ppm',
-      glutenFree: 1,
-      glutenRemoved: 0,
-      discontinued: 0,
-      country: 'Nowhere',
-      grains: '[]',
-      note: 'no longer in the dataset',
-      breweryUrl: '',
-      confirmed: '[]',
-      favorite: 0,
-    });
+    const db = await SQLite.openDatabaseAsync('glutenless.db');
+    await db.runAsync(
+      `INSERT INTO beers (id, name, brewery, style, abv, ibu, status, ppm, note)
+       VALUES (999999, 'Discontinued Ale', 'Defunct Brewing', 'Ghost', 5, 5, 'free', '<20 ppm', 'no longer in the dataset')`
+    );
     expect(await getBeerById(999999)).not.toBeNull();
 
+    setLocalVersion('2000-01-01T00:00:00.000Z'); // an app update bringing a newer bundled list
     await initDb();
 
     expect(await getBeerById(999999)).toBeNull();
     expect(await listBeers('all', '')).toHaveLength(beersSeed.length);
+  });
+
+  it('treats an empty batch as "nothing to update" rather than deleting every beer', async () => {
+    await upsertBeers([]);
+    expect(await listBeers('all', '')).toHaveLength(beersSeed.length);
+  });
+
+  it('records the bundled version as what the database holds after seeding', () => {
+    expect(getLocalVersion()).toBe(BUNDLED_VERSION);
+  });
+
+  describe('re-seeding at launch', () => {
+    const db = () => SQLite.openDatabaseAsync('glutenless.db');
+    const noteOfBeer1 = async () => (await getBeerById(1))?.note;
+    const seededNote = beersSeed.find((b) => b.id === 1)!.note;
+
+    afterEach(async () => {
+      setLocalVersion('2000-01-01T00:00:00.000Z');
+      await initDb(); // back to the bundled list
+    });
+
+    it('keeps newer synced data on a normal relaunch', async () => {
+      await (await db()).runAsync("UPDATE beers SET note = 'from a newer sync' WHERE id = 1");
+      setLocalVersion('2999-01-01T00:00:00.000Z');
+
+      await initDb();
+      expect(await noteOfBeer1()).toBe('from a newer sync');
+    });
+
+    it('does not re-seed when the bundled list is the one already stored', async () => {
+      await (await db()).runAsync("UPDATE beers SET note = 'unchanged' WHERE id = 1");
+      await initDb();
+      expect(await noteOfBeer1()).toBe('unchanged');
+    });
+
+    it('re-seeds when the bundled list is newer than the stored data', async () => {
+      await (await db()).runAsync("UPDATE beers SET note = 'old' WHERE id = 1");
+      setLocalVersion('2000-01-01T00:00:00.000Z');
+
+      await initDb();
+      expect(await noteOfBeer1()).toBe(seededNote);
+      expect(getLocalVersion()).toBe(BUNDLED_VERSION);
+    });
+
+    it('re-seeds an empty table whatever the stored version says', async () => {
+      await (await db()).runAsync('DELETE FROM beers');
+      setLocalVersion('2999-01-01T00:00:00.000Z');
+
+      await initDb();
+      expect(await listBeers('all', '')).toHaveLength(beersSeed.length);
+    });
   });
 
   it('filters by gluten status', async () => {
@@ -135,30 +233,43 @@ describe('db seeding + queries', () => {
     expect(beer?.favorite).toBe(false);
   });
 
+  // Expected values come from the seed itself, so editing data/beers.json can't break these.
   it('round-trips grains, gluten flags, and breweryUrl', async () => {
-    const daura = await getBeerById(129);
-    expect(daura?.name).toBe('Daura Damm');
-    expect(daura?.country).toBe('Spain');
-    expect(daura?.grains).toEqual(['barley']);
-    expect(daura?.glutenFree).toBe(false);
-    expect(daura?.glutenRemoved).toBe(true);
-    expect(daura?.breweryUrl).toBe('https://www.estrelladamm.com/');
+    const removed = beersSeed.find((b) => b.glutenRemoved && b.grains.length > 1 && b.breweryUrl)!;
+    const free = beersSeed.find((b) => b.glutenFree && b.grains.length > 1 && b.breweryUrl)!;
 
-    const glutenberg = await getBeerById(1);
-    expect(glutenberg?.grains).toEqual(['millet', 'corn']);
-    expect(glutenberg?.glutenRemoved).toBe(false);
-    expect(glutenberg?.breweryUrl).toBe('https://www.glutenberg.ca/');
+    for (const seed of [removed, free]) {
+      const beer = await getBeerById(seed.id);
+      expect(beer?.name).toBe(seed.name);
+      expect(beer?.country).toBe(seed.country);
+      expect(beer?.grains).toEqual(seed.grains);
+      expect(beer?.glutenFree).toBe(seed.glutenFree);
+      expect(beer?.glutenRemoved).toBe(seed.glutenRemoved);
+      expect(beer?.breweryUrl).toBe(seed.breweryUrl);
+    }
   });
 
   it('round-trips a null ibu and a discontinued flag', async () => {
-    const redAle = await getBeerById(4); // Red / Rousse (Glutenberg), ibu: null
-    expect(redAle?.ibu).toBeNull();
+    const noIbu = beersSeed.find((b) => b.ibu === null)!;
+    expect((await getBeerById(noIbu.id))?.ibu).toBeNull();
 
-    const aurochs = await getBeerById(69); // Porter (Aurochs), discontinued
-    expect(aurochs?.discontinued).toBe(true);
+    const discontinued = beersSeed.find((b) => b.discontinued)!;
+    expect((await getBeerById(discontinued.id))?.discontinued).toBe(true);
 
-    const glutenberg = await getBeerById(1);
-    expect(glutenberg?.discontinued).toBe(false);
+    const current = beersSeed.find((b) => !b.discontinued)!;
+    expect((await getBeerById(current.id))?.discontinued).toBe(false);
+  });
+
+  it('lists discontinued beers after current ones, each group sorted by name ignoring case', async () => {
+    const all = await listBeers('all', '');
+    const firstDiscontinued = all.findIndex((b) => b.discontinued);
+    expect(firstDiscontinued).toBeGreaterThan(0);
+    expect(all.slice(firstDiscontinued).every((b) => b.discontinued)).toBe(true);
+
+    const current = all.slice(0, firstDiscontinued).map((b) => b.name);
+    // Case-insensitive, so "Alpenglow" comes before "AVA".
+    const lower = current.map((n) => n.toLowerCase());
+    expect(lower).toEqual([...lower].sort());
   });
 
   it('returns null for an unknown id', async () => {
@@ -170,6 +281,16 @@ describe('db seeding + queries', () => {
     expect((await getBeerById(1))?.favorite).toBe(true);
     expect(await toggleFavorite(1)).toBe(false);
     expect((await getBeerById(1))?.favorite).toBe(false);
+  });
+
+  it('keeps a personal note through a data update', async () => {
+    await setPersonalNote(1, '  Sold at the corner shop  ');
+    expect((await getBeerById(1))?.personalNote).toBe('Sold at the corner shop');
+
+    await upsertBeers(beersSeed as BeerData[]);
+    expect((await getBeerById(1))?.personalNote).toBe('Sold at the corner shop');
+
+    await setPersonalNote(1, '');
   });
 
   it('lists only favorited beers for the favorite filter', async () => {

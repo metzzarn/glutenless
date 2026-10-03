@@ -1,13 +1,13 @@
-import { matchBeerByBarcode, matchBeerByText, matchBeersInMenuText } from '../lib/match';
+import { matchBeerByText, matchBeersInMenuText } from '../lib/match';
 import beersSeed from '../data/beers.json';
-import type { Beer } from '../lib/db';
+import type { Beer, BeerData } from '../lib/db';
 import { statusFromFlags } from '../lib/status';
 
-function toBeer(b: Omit<Beer, 'favorite' | 'status'>): Beer {
-  return { ...b, status: statusFromFlags(b.glutenFree), favorite: false };
+function toBeer(b: BeerData): Beer {
+  return { ...b, status: statusFromFlags(b.glutenFree), favorite: false, personalNote: '' };
 }
 
-const beers: Beer[] = (beersSeed as Omit<Beer, 'favorite' | 'status'>[]).map(toBeer);
+const beers: Beer[] = (beersSeed as BeerData[]).map(toBeer);
 
 describe('matchBeerByText', () => {
   it('matches on exact name within noisy OCR text', () => {
@@ -111,14 +111,22 @@ describe('matchBeersInMenuText', () => {
   });
 });
 
-describe('matchBeerByBarcode', () => {
-  it('is deterministic for the same barcode', () => {
-    const a = matchBeerByBarcode('012345678905', beers);
-    const b = matchBeerByBarcode('012345678905', beers);
-    expect(a).toEqual(b);
+describe('matchBeersInMenuText edge cases', () => {
+  const custom = (id: number, name: string, brewery: string) =>
+    ({ id, name, brewery, style: '', personalNote: '' }) as Beer;
+
+  it('returns nothing for a blank menu', () => {
+    expect(matchBeersInMenuText('  \n ', beers)).toEqual([]);
   });
 
-  it('returns null for empty input', () => {
-    expect(matchBeerByBarcode('', beers)).toBeNull();
+  it("falls back to a brewery's first word when every word is generic", () => {
+    const stout = custom(1, 'Stout', 'Beer Co');
+    expect(matchBeersInMenuText('STOUT\nBEER CO', [stout])).toEqual([stout]);
+    expect(matchBeersInMenuText('STOUT\nSomeone Else', [stout])).toEqual([]);
+  });
+
+  it('never matches a generic name whose brewery has no usable word', () => {
+    const stout = custom(1, 'Stout', '(Gluten Free)');
+    expect(matchBeersInMenuText('STOUT\nGLUTEN FREE', [stout])).toEqual([]);
   });
 });

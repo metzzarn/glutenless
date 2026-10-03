@@ -1,14 +1,16 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radii, spacing } from '../lib/theme';
+import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
 export type SyncStatus = 'offline' | 'synced' | 'syncing' | 'failed';
 
-const STATUS_META: Record<SyncStatus, { label: string; bg: string; fg: string; dot: string }> = {
+const statusMeta = (
+  colors: Palette
+): Record<SyncStatus, { label: string; bg: string; fg: string; dot: string }> => ({
   offline: { label: 'Offline', bg: colors.pillBg, fg: colors.textMuted, dot: colors.textMuted3 },
-  synced: { label: 'Synced', bg: colors.statusFree.bg, fg: colors.statusFree.text, dot: colors.statusFree.dot },
+  synced: { label: 'Synced', bg: colors.status.free.bg, fg: colors.status.free.text, dot: colors.status.free.dot },
   syncing: { label: 'Syncing…', bg: colors.pillBg, fg: colors.textMuted, dot: colors.textMuted3 },
-  failed: { label: 'Sync failed', bg: colors.statusLow.bg, fg: colors.statusLow.text, dot: colors.statusLow.dot },
-};
+  failed: { label: 'Sync failed', bg: colors.status.low.bg, fg: colors.status.low.text, dot: colors.status.low.dot },
+});
 
 /**
  * Reflects the real result of the last sync attempt against the server
@@ -17,9 +19,15 @@ const STATUS_META: Record<SyncStatus, { label: string; bg: string; fg: string; d
  * back to `offline` a couple seconds after a failed attempt.
  */
 export function SyncPill({ status, onPress }: { status: SyncStatus; onPress: () => void }) {
-  const meta = STATUS_META[status];
+  const meta = statusMeta(useColors())[status];
+  const styles = useStyles(makeStyles);
   return (
-    <Pressable onPress={onPress} style={[styles.pill, { backgroundColor: meta.bg }]}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.pill, { backgroundColor: meta.bg }]}
+      accessibilityRole="button"
+      accessibilityHint="Syncs the beer list"
+    >
       <View style={styles.dotWrap}>
         {status === 'syncing' ? (
           <ActivityIndicator size="small" color={meta.fg} />
@@ -32,7 +40,7 @@ export function SyncPill({ status, onPress }: { status: SyncStatus; onPress: () 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

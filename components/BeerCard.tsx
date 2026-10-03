@@ -2,8 +2,8 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {runOnJS, useAnimatedStyle, useSharedValue, withSpring,} from 'react-native-reanimated';
 import type {Beer} from '../lib/db';
-import {STATUS_META} from '../lib/status';
-import {colors, fonts, radii, spacing} from '../lib/theme';
+import {useStatusMeta} from '../lib/status';
+import {fonts, radii, spacing, useStyles, type Palette} from '../lib/theme';
 import {DiscontinuedBadge} from './DiscontinuedBadge';
 
 const SWIPE_THRESHOLD = 60;
@@ -20,7 +20,8 @@ export function BeerCard({
   onSwipeRight?: () => void;
 }) {
   const dragX = useSharedValue(0);
-  const meta = STATUS_META[beer.status];
+  const meta = useStatusMeta(beer.status);
+  const styles = useStyles(makeStyles);
 
   const pan = Gesture.Pan()
     .onUpdate((e) => {
@@ -66,11 +67,11 @@ export function BeerCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   card: {
     width: 300,
     height: 380,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radii.xl,
     padding: spacing(5.5),
     shadowColor: '#000',
@@ -92,5 +93,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(3),
     alignItems: 'center',
   },
-  ctaText: { fontFamily: fonts.sansBold, fontSize: 14, color: colors.white },
+  ctaText: { fontFamily: fonts.sansBold, fontSize: 14, color: colors.onBrand },
 });

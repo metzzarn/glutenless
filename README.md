@@ -10,12 +10,13 @@ Built with [Expo](https://docs.expo.dev/versions/v57.0.0/) and Expo Router.
 
 ## Features
 
-- **Search** the beer list by name or brewery, with instant filtering by All / Gluten-Free / Gluten-Removed / Favorites.
+- **Search** the beer list by name, brewery, style, country or your own notes, tolerant of typos, with instant filtering by All / Gluten-Free / Gluten-Removed / Favorites and a running count.
 - **Voice search** — tap the mic and speak a beer or brewery name.
-- **Camera scan** — point the camera at a can/bottle to identify it by barcode or label text, or at a menu to detect every matching beer on it in one shot.
+- **Camera scan** — point the camera at a can/bottle to identify it by its label text, or at a menu to detect every matching beer on it in one shot. A beer that isn't recognised gets a clear warning to assume it contains gluten.
 - **Beer details** — ABV, IBU, country, grains/ingredients, gluten status (with ppm and a "confirmed" badge when a human has verified it against a primary source), and a link to the brewery's site.
-- **Favorites** — heart a beer from the list or its detail page to save it for later.
-- **Offline-first data** — the beer list ships bundled with the app in SQLite, then syncs in the background from a hosted `beers.json` when a connection is available.
+- **Favorites and notes** — heart a beer from the list or its detail page, and keep your own note on any beer (stored only on the phone).
+- **Light and dark mode** — follows the device by default, or pick one from the header.
+- **Offline-first data** — the beer list ships bundled with the app in SQLite, then syncs in the background from a hosted `beers.json` when a connection is available and the hosted list is newer. Discontinued beers are listed last.
 
 ## Getting started
 
@@ -54,6 +55,18 @@ tools/          Standalone HTML tool for confirming/curating beer data (see Data
 
 The beer list in `data/beers.json` is bundled into the app and also hosted so installed apps can pick up updates without an app store release. Each beer records whether it's gluten-free or gluten-removed, its ppm reading, ingredients, and which of those fields have been confirmed against a primary source (e.g. the brewery). See `data/update_beers_prompt.md` for how new entries are drafted.
 
+### Data version
+
+`data/beers-version.json` stamps the list with an `updatedAt` time (plus a hash of `beers.json`). The app only downloads the hosted list when its stamp is newer than the data it already has, and only re-seeds from the bundled list when that is newer, so neither can replace newer data with older. That also means unpublished local edits to `beers.json` show up when testing instead of being overwritten by the hosted copy.
+
+After editing `beers.json` by hand or with the Confirmation Desk, re-stamp it (the merge tool does this for you):
+
+```bash
+npm run stamp-data
+```
+
+A test fails if `beers.json` changes without a new stamp. Push `beers.json` and `beers-version.json` together so installed apps pick up the change.
+
 ### Confirm beers tool
 
 ![Confirm beers tool](screenshots/Confirm%20beers%20tool.png)
@@ -64,7 +77,18 @@ The beer list in `data/beers.json` is bundled into the app and also hosted so in
 2. Work through each beer's ticket, checking off gluten-free/gluten-removed, ppm, grains/ingredients, tasting note, and brewery URL as you verify them against the brewery's own site.
 3. Filter tickets by All / Unconfirmed / In progress / Fully confirmed, or search by name, brewery, style, or country.
 4. Progress autosaves to `localStorage` as you go, so a closed tab can be restored later (or discarded to start over).
-5. **Export confirmed list** to download an updated `beers.json` with the newly-confirmed fields recorded.
+5. **Export confirmed list** to download an updated `beers.json` with the newly-confirmed fields recorded, then replace `data/beers.json` with it and run `npm run stamp-data`.
+
+### Merge beers tool
+
+`tools/merge-beers.mjs` adds newly researched beers to `data/beers.json` without touching existing entries:
+
+```bash
+node tools/merge-beers.mjs candidates.json --dry-run  # preview
+node tools/merge-beers.mjs candidates.json            # append to data/beers.json
+```
+
+`candidates.json` is a JSON array of beers in the `beers.json` schema, without `id` or `confirmed`. Candidates are validated, de-duplicated against the list on brewery + name, given new ids continuing from the highest existing one, and appended as unconfirmed so they show up in the Confirmation Desk. The data version is re-stamped automatically.
 
 ## Disclaimer
 

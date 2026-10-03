@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radii, spacing } from '../lib/theme';
+import { fonts, radii, spacing, useStyles, type Palette } from '../lib/theme';
 
 export function DiscontinuedBadge() {
+  const styles = useStyles(makeStyles);
   return (
     <View style={styles.badge}>
       <Text style={styles.text}>Discontinued</Text>
@@ -9,7 +10,7 @@ export function DiscontinuedBadge() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   badge: {
     paddingHorizontal: spacing(2.25),
     paddingVertical: spacing(1),

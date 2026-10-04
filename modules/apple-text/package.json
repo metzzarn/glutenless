@@ -1,0 +1,10 @@
+{
+  "name": "apple-text",
+  "version": "0.1.0",
+  "description": "On-device text recognition with Apple's Vision framework",
+  "license": "MIT",
+  "author": "Glutenless",
+  "homepage": "https://github.com/metzzarn/glutenless",
+  "private": true,
+  "main": "index.ts"
+}

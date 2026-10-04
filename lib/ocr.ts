@@ -2,6 +2,7 @@ import TextRecognition, {
   type TextBlock,
   type TextRecognitionResult,
 } from '@react-native-ml-kit/text-recognition';
+import * as AppleText from '../modules/apple-text';
 import type { Beer } from './db';
 import {
   findCanCandidates,
@@ -42,18 +43,41 @@ export function extractFullText(result: TextRecognitionResult): string {
 }
 
 /**
+ * Reads the text in an image: with Apple's Vision framework on iOS, which is
+ * stronger there than ML Kit, otherwise with ML Kit. Vision's lines are
+ * returned as ML Kit blocks (one line each), so everything after this
+ * handles both alike.
+ */
+export async function recognizeText(uri: string): Promise<TextRecognitionResult> {
+  if (AppleText.isAppleTextAvailable) {
+    const lines = await AppleText.recognizeAsync(uri);
+    return {
+      text: lines.map((l) => l.text).join('\n'),
+      blocks: lines.map((l) => ({
+        text: l.text,
+        frame: l.frame,
+        lines: [{ text: l.text, frame: l.frame, elements: [], recognizedLanguages: [] }],
+        recognizedLanguages: [],
+      })),
+    };
+  }
+  return TextRecognition.recognize(uri);
+}
+
+/**
  * Recognizes the text in a photo and matches it against our beers: a can or
  * bottle by its label text, a menu by every beer named on it. Barcodes aren't
  * used: the dataset has no barcode numbers, and a guessed match could show a
  * gluten-containing beer as gluten-free.
  */
 export async function scanPhoto(photoUri: string, mode: ScanMode, beers: Beer[]): Promise<PhotoScan> {
-  const result = await TextRecognition.recognize(photoUri);
+  const result = await recognizeText(photoUri);
   const text = extractFullText(result);
+  const blocks = result.blocks ?? [];
   if (mode === 'menu') {
     return {
       matches: matchBeersInMenuText(text, beers),
-      blocks: result.blocks ?? [],
+      blocks,
       text,
       candidates: findMenuCandidates(text, beers),
       suggestions: [],
@@ -63,7 +87,7 @@ export async function scanPhoto(photoUri: string, mode: ScanMode, beers: Beer[])
   const candidates = findCanCandidates(text, beers);
   return {
     matches: match ? [match] : [],
-    blocks: result.blocks ?? [],
+    blocks,
     text,
     candidates,
     suggestions: match ? [] : suggestByBrewery(candidates, beers),

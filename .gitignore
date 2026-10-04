@@ -45,3 +45,9 @@ yarn-error.*
 
 # local Expo module build output
 modules/*/android/build/
+
+# OCR comparison photos (not ours to publish)
+tools/ocr-bench/images/
+tools/ocr-bench/.venv/
+tools/ocr-bench/*.log
+tools/ocr-bench/results.json

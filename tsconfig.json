@@ -10,6 +10,7 @@
     "metro.config.js",
     "jest.config.js",
     "android",
-    "ios"
+    "ios",
+    "tools"
   ]
 }

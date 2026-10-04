@@ -61,6 +61,7 @@
         }
       ],
       "./modules/label-reader/app.plugin.js",
+      "./plugins/withPlayServicesTextRecognition.js",
       [
         "expo-build-properties",
         {

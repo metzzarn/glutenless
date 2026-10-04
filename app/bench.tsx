@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +13,7 @@ import { fonts, spacing, useStyles, type Palette } from '../lib/theme';
  * outcome and the time to logcat (ReactNativeJS), for comparing with the
  * desktop bench. Push photos with `adb push`, then open it with
  * `adb shell am start -a android.intent.action.VIEW -d glutenless://bench`.
+ * With ?reader=platform, the photos are read with ML Kit instead.
  */
 
 /** A photo's outcome (`note`) or an error. */
@@ -22,6 +24,7 @@ export default function BenchScreen() {
   const styles = useStyles(makeStyles);
   const [rows, setRows] = useState<Row[]>([]);
   const [done, setDone] = useState(false);
+  const { reader } = useLocalSearchParams<{ reader?: string }>();
 
   useEffect(() => {
     (async () => {
@@ -30,7 +33,7 @@ export default function BenchScreen() {
         const name = decodeURIComponent(uri.split('/').pop() ?? uri);
         try {
           const started = Date.now();
-          const scan = await scanPhoto(uri, 'can', beers);
+          const scan = await scanPhoto(uri, 'can', beers, { platformOnly: reader === 'platform' });
           const ms = Date.now() - started;
           const verdict = scan.matches.length
             ? `matched ${scan.matches[0].name}`

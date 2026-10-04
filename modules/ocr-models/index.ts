@@ -1,8 +1,5 @@
 import { requireOptionalNativeModule } from 'expo';
 
-export type BenchInput = { name: string; shape: number[]; type?: 'float' | 'int64' };
-export type BenchResult = { model: string; provider: string; loadMs: number; firstMs: number; medianMs: number; minMs: number };
-
 export type OcrLine = {
   /** PP-OCRv6's reading, and its mean character confidence (0–1). */
   text: string;
@@ -25,7 +22,6 @@ type NativeOcrModels = {
   modelDir(): string | null;
   listImages(): string[];
   readAsync(uri: string, waterecBelow: number, maxWaterecLines: number): Promise<OcrResult>;
-  benchmarkAsync(modelFile: string, inputs: BenchInput[], runs: number, provider: string): Promise<BenchResult>;
 };
 
 // Android only for now.
@@ -51,10 +47,4 @@ export function listImages(): string[] {
 export function readAsync(uri: string, { waterecBelow = 0.9, maxWaterecLines = 4 } = {}): Promise<OcrResult> {
   if (!native) return Promise.reject(new Error('OCR models are only available on Android'));
   return native.readAsync(uri, waterecBelow, maxWaterecLines);
-}
-
-/** Times one ONNX model (a file in modelDir()) on random input: load time, first run, then the median of `runs`. */
-export function benchmarkAsync(modelFile: string, inputs: BenchInput[], runs = 5, provider: 'cpu' | 'xnnpack' = 'cpu'): Promise<BenchResult> {
-  if (!native) return Promise.reject(new Error('OCR models are only available on Android'));
-  return native.benchmarkAsync(modelFile, inputs, runs, provider);
 }

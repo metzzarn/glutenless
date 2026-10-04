@@ -13,7 +13,7 @@ npm test                                   # Jest (jest-expo preset)
 npx jest __tests__/match.test.ts           # one file
 npx jest -t "generic name"                 # tests whose name matches
 npm run typecheck                          # tsc --noEmit
-tools/ocr-bench/install_models.sh          # once: puts the on-device OCR models in the app (needs the bench's .venv)
+tools/ocr-bench/install_models.sh          # once: puts the on-device OCR models and their ONNX Runtime in the app (needs the bench's .venv)
 npm run build:android                      # expo prebuild + gradlew assembleRelease (arm64-v8a only)
 ~/Android/Sdk/platform-tools/adb install -r android/app/build/outputs/apk/release/app-release.apk
 npm run stamp-data                         # after any edit to data/beers.json
@@ -49,9 +49,10 @@ Recognition must stay on-device (a product decision): no cloud vision or LLM fal
 
 ## On-device OCR models (`modules/ocr-models`)
 
-PP-OCRv6 small (find and read text lines) and WATERec (artistic lettering, for lines PP-OCRv6 reads with low confidence), run with ONNX Runtime in Kotlin (`LabelOcr.kt`, a port of PaddleX's pipeline: 960 px, rotated text boxes read straightened). On the 20-photo bench it gets 15 right against ML Kit's 10, at ~0.5 s per photo. Android only for now (iOS would need `LabelOcr.kt` ported to Swift). `glutenless://bench?mode=read` scans every photo pushed to the app's files dir (`images/`) as a can scan would, and logs to logcat.
+PP-OCRv6 small (find and read text lines) and WATERec (artistic lettering, for lines PP-OCRv6 reads with low confidence), run with a minimal ONNX Runtime in Kotlin (`LabelOcr.kt`, a port of PaddleX's pipeline: 960 px, rotated text boxes read straightened). On the 20-photo bench it gets 15 right against ML Kit's 10, at ~0.5 s per photo. Android only for now (iOS would need `LabelOcr.kt` ported to Swift). `glutenless://bench?mode=read` scans every photo pushed to the app's files dir (`images/`) as a can scan would, and logs to logcat.
 
-- The models (~58 MB, shrunk by `tools/ocr-bench/shrink_models.py`: a Latin-only reader, WATERec in 8 bits) are generated, not in git. `install_models.sh` copies them into the module's assets, and `scripts/build-android.sh` refuses to build without them. Files of the same name in the app's external files dir (`onnx/`) take precedence, for testing variants over adb.
+- The models (~58 MB, shrunk by `tools/ocr-bench/shrink_models.py`: a Latin-only reader, WATERec in 8 bits) are generated, not in git. `install_models.sh` converts them to ORT format and copies them into the module's assets, and `scripts/build-android.sh` refuses to build without them. Files of the same name in the app's external files dir (`onnx/`) take precedence, for testing variants over adb.
+- ONNX Runtime is built from source (`tools/ocr-bench/build_ort.sh`, ~20 min, into `modules/ocr-models/android/libs/`, not in git) with only the operators the models use: a few MB instead of the official package's 33. It loads only ORT-format models, pre-optimized at conversion. `install_models.sh` rebuilds it when the models' operator list changes; a model needing an operator the build lacks fails to load, so the reader falls back to ML Kit.
 - `tools/ocr-bench` compares readers on label photos through `lib/match.ts` (`bench.py`, then `node tools/ocr-bench/score.mts`). Re-check accuracy there and on the phone after changing models or the pipeline.
 - WATERec can invent text on small print ("www.…COM"), like Gemini Nano.
 

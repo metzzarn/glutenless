@@ -47,18 +47,17 @@ data class OcrLine(
  * tilted labels (a Peroni bottle held at an angle read as "S / 爱 / ssss").
  */
 class LabelOcr(private val env: OrtEnvironment, private val open: (String) -> ByteArray) {
+  // ORT-format models, already optimized for the phone when converted
+  // (tools/ocr-bench/build_ort.sh): the app's minimal runtime can't optimize.
   private fun session(name: String) =
-    env.createSession(open(name), OrtSession.SessionOptions().apply {
-      setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-      setIntraOpNumThreads(4)
-    })
+    env.createSession(open(name), OrtSession.SessionOptions().apply { setIntraOpNumThreads(4) })
 
   private fun lines(name: String) = String(open(name), Charsets.UTF_8).split('\n').dropLastWhile { it.isEmpty() }
 
-  private val det by lazy { session("PP-OCRv6_small_det.onnx") }
-  private val rec by lazy { session("PP-OCRv6_small_rec.onnx") }
-  private val waterecEncoder by lazy { session("WATERec-RS-encoder.onnx") }
-  private val waterecDecoder by lazy { session("WATERec-RS-decoder.onnx") }
+  private val det by lazy { session("PP-OCRv6_small_det.ort") }
+  private val rec by lazy { session("PP-OCRv6_small_rec.ort") }
+  private val waterecEncoder by lazy { session("WATERec-RS-encoder.ort") }
+  private val waterecDecoder by lazy { session("WATERec-RS-decoder.ort") }
   private val paddleChars by lazy { lines("PP-OCRv6.chars.txt") }
   private val waterecChars by lazy { lines("WATERec-RS.chars.txt") }
 

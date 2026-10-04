@@ -1,31 +1,15 @@
 package expo.modules.ocrmodels
 
-import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
 import android.net.Uri
-import android.os.SystemClock
-import android.util.Log
-import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import expo.modules.kotlin.records.Field
-import expo.modules.kotlin.records.Record
 import java.io.File
-import java.nio.FloatBuffer
-import java.nio.LongBuffer
-import kotlin.random.Random
-
-data class BenchInput(
-  @Field val name: String = "",
-  @Field val shape: List<Long> = emptyList(),
-  /** "float" (random values) or "int64" (small token ids). */
-  @Field val type: String = "float",
-) : Record
 
 /**
- * On-device OCR models (ONNX) for label reading: PP-OCRv6 and WATERec (see
- * LabelOcr), plus a timing function used to choose them.
+ * On-device OCR models for label reading: PP-OCRv6 and WATERec (see
+ * LabelOcr), run by a minimal ONNX Runtime built for them
+ * (tools/ocr-bench/build_ort.sh), which only loads ORT-format models.
  *
  * Models ship in the APK's assets (ocr-models/, put there by
  * tools/ocr-bench/install_models.sh). A file of the same name in the app's
@@ -51,8 +35,8 @@ class OcrModelsModule : Module() {
   companion object {
     const val ASSET_DIR = "ocr-models"
     val REQUIRED = listOf(
-      "PP-OCRv6_small_det.onnx", "PP-OCRv6_small_rec.onnx", "PP-OCRv6.chars.txt",
-      "WATERec-RS-encoder.onnx", "WATERec-RS-decoder.onnx", "WATERec-RS.chars.txt",
+      "PP-OCRv6_small_det.ort", "PP-OCRv6_small_rec.ort", "PP-OCRv6.chars.txt",
+      "WATERec-RS-encoder.ort", "WATERec-RS-decoder.ort", "WATERec-RS.chars.txt",
     )
   }
 
@@ -95,49 +79,6 @@ class OcrModelsModule : Module() {
           "timings" to ocr.timings.toMap(),
         )
       }
-    }
-
-    AsyncFunction("benchmarkAsync") Coroutine { modelFile: String, inputs: List<BenchInput>, runs: Int, provider: String ->
-      val options = OrtSession.SessionOptions().apply {
-        setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-        setIntraOpNumThreads(4)
-        if (provider == "xnnpack") addXnnpack(mapOf("intra_op_num_threads" to "4"))
-      }
-      val loadStart = SystemClock.elapsedRealtime()
-      env.createSession(open(modelFile), options).use { session ->
-        val loadMs = SystemClock.elapsedRealtime() - loadStart
-        val tensors = inputs.associate { it.name to tensor(it) }
-        try {
-          val times = (0..runs).map {
-            val start = SystemClock.elapsedRealtime()
-            session.run(tensors).close()
-            SystemClock.elapsedRealtime() - start
-          }
-          val steady = times.drop(1).sorted()
-          val result = mapOf(
-            "model" to modelFile,
-            "provider" to provider,
-            "loadMs" to loadMs,
-            "firstMs" to times.first(),
-            "medianMs" to steady[steady.size / 2],
-            "minMs" to steady.first(),
-          )
-          Log.i("GlutenlessBench", result.toString())
-          result
-        } finally {
-          tensors.values.forEach { it.close() }
-        }
-      }
-    }
-  }
-
-  private fun tensor(input: BenchInput): OnnxTensor {
-    val shape = input.shape.toLongArray()
-    val count = shape.fold(1L) { a, b -> a * b }.toInt()
-    return if (input.type == "int64") {
-      OnnxTensor.createTensor(env, LongBuffer.wrap(LongArray(count) { Random.nextLong(1, 90) }), shape)
-    } else {
-      OnnxTensor.createTensor(env, FloatBuffer.wrap(FloatArray(count) { Random.nextFloat() * 2 - 1 }), shape)
     }
   }
 }

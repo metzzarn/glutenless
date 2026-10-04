@@ -35,7 +35,8 @@ const CASES: { label: string; file: string; inputs: BenchInput[] }[] = [
   },
 ];
 
-type Row = { label: string; result?: BenchResult; error?: string };
+/** A timing result, a photo's reading (`note`), or an error. */
+type Row = { label: string; result?: BenchResult; note?: string; error?: string };
 
 export default function BenchScreen() {
   const insets = useSafeAreaInsets();
@@ -59,7 +60,7 @@ export default function BenchScreen() {
                 : 'no match';
             const lines = result.lines.map((l) => `${l.text} (${l.score.toFixed(2)})${l.waterecText !== null ? ` | W: ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''}`);
             console.log(`READ ${name} :: ${verdict} :: ${reading.durationMs} ms ${JSON.stringify(result.timings)} :: ${JSON.stringify(lines)}`);
-            setRows((r) => [...r, { label: name, error: `${verdict} · ${reading.durationMs} ms` }]);
+            setRows((r) => [...r, { label: name, note: `${verdict} · ${reading.durationMs} ms` }]);
           } catch (e) {
             const error = e instanceof Error ? e.message : String(e);
             console.log(`READ ${name} :: ERROR ${error}`);
@@ -102,7 +103,7 @@ export default function BenchScreen() {
           {'\n'}
           {row.result
             ? `load ${row.result.loadMs} ms · first ${row.result.firstMs} ms · median ${row.result.medianMs} ms`
-            : `error: ${row.error}`}
+            : (row.note ?? `error: ${row.error}`)}
         </Text>
       ))}
       <Text style={styles.meta}>{done ? 'Done.' : 'Running…'}</Text>

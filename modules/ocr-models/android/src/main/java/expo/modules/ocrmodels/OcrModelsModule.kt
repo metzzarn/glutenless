@@ -26,16 +26,43 @@ data class BenchInput(
 /**
  * On-device OCR models (ONNX) for label reading: PP-OCRv6 and WATERec (see
  * LabelOcr), plus a timing function used to choose them.
+ *
+ * Models ship in the APK's assets (ocr-models/, put there by
+ * tools/ocr-bench/install_models.sh). A file of the same name in the app's
+ * external files dir (onnx/) takes precedence, for trying other model
+ * variants over adb.
  */
 class OcrModelsModule : Module() {
   private val env by lazy { OrtEnvironment.getEnvironment() }
-  private val modelFiles get() = appContext.reactContext?.getExternalFilesDir("onnx") ?: throw IllegalStateException("No model directory")
-  private val ocr by lazy { LabelOcr(env, modelFiles) }
+  private val context get() = appContext.reactContext ?: throw IllegalStateException("No React context")
+  private val overrides get() = context.getExternalFilesDir("onnx")
+
+  private fun open(name: String): ByteArray {
+    val override = overrides?.let { File(it, name) }
+    if (override != null && override.isFile) return override.readBytes()
+    return context.assets.open("$ASSET_DIR/$name").use { it.readBytes() }
+  }
+
+  private fun has(name: String) =
+    overrides?.let { File(it, name).isFile } == true || runCatching { context.assets.open("$ASSET_DIR/$name").close() }.isSuccess
+
+  private val ocr by lazy { LabelOcr(env, ::open) }
+
+  companion object {
+    const val ASSET_DIR = "ocr-models"
+    val REQUIRED = listOf(
+      "PP-OCRv6_small_det.onnx", "PP-OCRv6_small_rec.onnx", "PP-OCRv6.chars.txt",
+      "WATERec-RS-encoder.onnx", "WATERec-RS-decoder.onnx", "WATERec-RS.chars.txt",
+    )
+  }
 
   override fun definition() = ModuleDefinition {
     Name("OcrModels")
 
-    /** Where models are read from: the app's external files dir, writable over adb. */
+    /** Whether every model the reader needs is bundled (or pushed over adb). */
+    Function("isReady") { REQUIRED.all { has(it) } }
+
+    /** Where model overrides are read from: the app's external files dir, writable over adb. */
     Function("modelDir") {
       appContext.reactContext?.getExternalFilesDir("onnx")?.absolutePath
     }
@@ -71,14 +98,13 @@ class OcrModelsModule : Module() {
     }
 
     AsyncFunction("benchmarkAsync") Coroutine { modelFile: String, inputs: List<BenchInput>, runs: Int, provider: String ->
-      val path = File(appContext.reactContext?.getExternalFilesDir("onnx"), modelFile).absolutePath
       val options = OrtSession.SessionOptions().apply {
         setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
         setIntraOpNumThreads(4)
         if (provider == "xnnpack") addXnnpack(mapOf("intra_op_num_threads" to "4"))
       }
       val loadStart = SystemClock.elapsedRealtime()
-      env.createSession(path, options).use { session ->
+      env.createSession(open(modelFile), options).use { session ->
         val loadMs = SystemClock.elapsedRealtime() - loadStart
         val tensors = inputs.associate { it.name to tensor(it) }
         try {

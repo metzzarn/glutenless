@@ -10,7 +10,6 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.media.ExifInterface
 import android.os.SystemClock
-import java.io.File
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
 import kotlin.math.PI
@@ -47,19 +46,21 @@ data class OcrLine(
  * and is read straightened, as PaddleX does; axis-aligned boxes garbled
  * tilted labels (a Peroni bottle held at an angle read as "S / 爱 / ssss").
  */
-class LabelOcr(private val env: OrtEnvironment, private val dir: File) {
+class LabelOcr(private val env: OrtEnvironment, private val open: (String) -> ByteArray) {
   private fun session(name: String) =
-    env.createSession(File(dir, name).absolutePath, OrtSession.SessionOptions().apply {
+    env.createSession(open(name), OrtSession.SessionOptions().apply {
       setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
       setIntraOpNumThreads(4)
     })
+
+  private fun lines(name: String) = String(open(name), Charsets.UTF_8).split('\n').dropLastWhile { it.isEmpty() }
 
   private val det by lazy { session("PP-OCRv6_small_det.onnx") }
   private val rec by lazy { session("PP-OCRv6_small_rec.onnx") }
   private val waterecEncoder by lazy { session("WATERec-RS-encoder.onnx") }
   private val waterecDecoder by lazy { session("WATERec-RS-decoder.onnx") }
-  private val paddleChars by lazy { File(dir, "PP-OCRv6.chars.txt").readLines() }
-  private val waterecChars by lazy { File(dir, "WATERec-RS.chars.txt").readLines() }
+  private val paddleChars by lazy { lines("PP-OCRv6.chars.txt") }
+  private val waterecChars by lazy { lines("WATERec-RS.chars.txt") }
 
   val timings = mutableMapOf<String, Long>()
 

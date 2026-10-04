@@ -21,6 +21,7 @@ export type OcrResult = {
 };
 
 type NativeOcrModels = {
+  isReady(): boolean;
   modelDir(): string | null;
   listImages(): string[];
   readAsync(uri: string, waterecBelow: number, maxWaterecLines: number): Promise<OcrResult>;
@@ -34,7 +35,8 @@ export function modelDir(): string | null {
   return native?.modelDir() ?? null;
 }
 
-export const isOcrModelsAvailable = native !== null;
+/** Whether the on-device reader can run: Android, with its models bundled in the app. */
+export const isOcrModelsAvailable = native !== null && native.isReady();
 
 /** Debug: the photos in the app's external files dir (images/), as file:// URIs. */
 export function listImages(): string[] {

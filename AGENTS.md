@@ -13,7 +13,8 @@ npm test                                   # Jest (jest-expo preset)
 npx jest __tests__/match.test.ts           # one file
 npx jest -t "generic name"                 # tests whose name matches
 npm run typecheck                          # tsc --noEmit
-npm run build:android                      # expo prebuild + gradlew assembleRelease
+tools/ocr-bench/install_models.sh          # once: puts the on-device OCR models in the app (needs the bench's .venv)
+npm run build:android                      # expo prebuild + gradlew assembleRelease (arm64-v8a only)
 ~/Android/Sdk/platform-tools/adb install -r android/app/build/outputs/apk/release/app-release.apk
 npm run stamp-data                         # after any edit to data/beers.json
 node tools/merge-beers.mjs candidates.json --dry-run   # add researched beers (drop --dry-run to write)
@@ -45,6 +46,14 @@ Safety rules in `lib/match.ts`, each added after a real false match:
 **Scan debug mode:** hold the shutter to toggle it. Each photo then opens `app/scan-debug.tsx`, which shows ML Kit's boxes and text, each Nano reading, every candidate with its rejection reason, what a normal scan would do, and a "Share report" for turning a scan into a test.
 
 Recognition must stay on-device (a product decision): no cloud vision or LLM fallback.
+
+## On-device OCR models (`modules/ocr-models`)
+
+PP-OCRv6 small (find and read text lines) and WATERec (artistic lettering, for lines PP-OCRv6 reads with low confidence), run with ONNX Runtime in Kotlin (`LabelOcr.kt`, a port of PaddleX's pipeline: 960 px, rotated text boxes read straightened). On the 20-photo bench it gets 15 right against ML Kit's 10, at ~0.5 s per photo. For now it appears only on the scan debug screen and in `glutenless://bench?mode=read`, which reads every photo pushed to the app's files dir (`images/`) and logs to logcat.
+
+- The models (~58 MB, shrunk by `tools/ocr-bench/shrink_models.py`: a Latin-only reader, WATERec in 8 bits) are generated, not in git. `install_models.sh` copies them into the module's assets, and `scripts/build-android.sh` refuses to build without them. Files of the same name in the app's external files dir (`onnx/`) take precedence, for testing variants over adb.
+- `tools/ocr-bench` compares readers on label photos through `lib/match.ts` (`bench.py`, then `node tools/ocr-bench/score.mts`). Re-check accuracy there and on the phone after changing models or the pipeline.
+- WATERec can invent text on small print ("www.…COM"), like Gemini Nano.
 
 ## Gemini Nano module (`modules/label-reader`)
 

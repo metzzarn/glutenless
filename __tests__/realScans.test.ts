@@ -59,6 +59,14 @@ const scans: [label: string, text: string, expected: string | null][] = [
     'AOHOLFRI\nALKOHOLITON\nALKOHOL\nLAITILAN\nKukko\nPILS\nRONC\n33 cl',
     'Kukko Pils Alkoholiton',
   ],
+  // The same can on the phone: a misread "nooce" splits "Kukko" from "PILS",
+  // and the brewery only prints "LAITILAN" of Laitilan Wirvoitusjuomatehdas.
+  [
+    'Kukko Pils Alkoholiton can, PP-OCRv6 + WATERec on the phone',
+    'KOHOLFRI\nALKOHOU\nALKOHOLITON\nLAITILAN\nKukko\nnooce\nPILS\nALKOHOLITON OLUT\n33 cl\n000000',
+    'Kukko Pils Alkoholiton',
+  ],
+  ['Kukko Pils, made up', 'LAITILAN\nKukko\n~~\nPILS\n33 cl', 'Kukko Pils'],
   // "BREWOOG" reads as BrewDog, since OCR commonly takes a D for an O.
   ['BrewDog Vagabond, ML Kit', 'BREWOOG\nVAGABOND\nGLUTENFREE', 'Vagabond Pale Ale'],
 ];

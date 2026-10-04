@@ -66,6 +66,8 @@ const BREWERY_KEY_STOP_WORDS = new Set([
   ...BREWERY_STOP_WORDS,
   'brasserie', 'brauerei', 'privatbrauerei', 'bryggeri', 'brouwerij', 'birra',
   'gluten', 'free', 'de', 'du',
+  // Finnish "soft drinks factory": Laitilan Wirvoitusjuomatehdas prints just "LAITILAN".
+  'wirvoitusjuomatehdas', 'virvoitusjuomatehdas',
 ]);
 
 /**
@@ -400,8 +402,9 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
   // Every word of a name read, in any order: labels stack words, and some
   // readers list lines bottom to top ("GLUTENFREE / SinGluten / Galicia /
   // Estrella"). Only for names with two or more words that aren't style
-  // words, which then stand in for the brewery; gluten-free words still have
-  // to be there. A fit whose words another fit contains gives way to it
+  // words, which then stand in for the brewery, or with one once the beer's
+  // own brewery was read ("LAITILAN / Kukko / nooce / PILS / ALKOHOLITON");
+  // gluten-free words still have to be there. A fit whose words another fit contains gives way to it
   // ("Daura" to "Daura Damm"); fits left over that aren't the same beer are
   // ambiguous. Only a fallback: a name read in order wins ("Estrella Damm /
   // Daura IPA" is Daura IPA, though "Damm" and "Daura" are both there).
@@ -409,7 +412,8 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
   const anyOrder = beers.flatMap((beer) => {
     if (nameReadInOrder) return [];
     const words = normalize(beer.name).split(' ');
-    if (words.filter((w) => !STYLE_WORDS.has(w)).length < 2) return [];
+    const needed = breweriesSeen.has(beer.brewery) ? 1 : 2;
+    if (words.length < 2 || words.filter((w) => !STYLE_WORDS.has(w)).length < needed) return [];
     const found = words.map((w) => findInReadings(ocrReadings, w));
     return found.every(Boolean) ? [{ beer, words, found: found.join(' ') }] : [];
   });

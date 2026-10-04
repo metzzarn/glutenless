@@ -52,6 +52,14 @@
           "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Glutenless can scan a photo of a beer label from your photo library.",
+          "cameraPermission": "Glutenless uses the camera to scan a beer can, bottle, or menu so it can look up gluten content.",
+          "microphonePermission": "Glutenless uses the microphone for voice search."
+        }
+      ],
       "./modules/label-reader/app.plugin.js",
       [
         "expo-build-properties",

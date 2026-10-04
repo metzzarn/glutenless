@@ -1,4 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -77,11 +78,7 @@ export default function CameraScreen() {
   );
 
 
-  const takePhoto = useCallback(async () => {
-    if (!cameraRef.current || !ready) return;
-    const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
-    if (!photo?.uri) return;
-
+  const scanImage = useCallback(async (photo: { uri: string; width: number; height: number; fileName?: string }) => {
     setDetecting('Analyzing photo…');
     setNotice(null);
     const beers = await listBeers('all', '');
@@ -94,7 +91,7 @@ export default function CameraScreen() {
       setLastScan({
         ...scan,
         mode: scanMode,
-        photo: { uri: photo.uri, width: photo.width, height: photo.height },
+        photo: { uri: photo.uri, width: photo.width, height: photo.height, fileName: photo.fileName },
         durationMs: Date.now() - started,
       });
       router.push('/scan-debug');
@@ -141,7 +138,20 @@ export default function CameraScreen() {
       }
       setNotice(otherwise);
     }
-  }, [debug, mode, openBeer, ready, router]);
+  }, [debug, mode, openBeer, router]);
+
+  const takePhoto = useCallback(async () => {
+    if (!cameraRef.current || !ready) return;
+    const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
+    if (photo?.uri) await scanImage(photo);
+  }, [ready, scanImage]);
+
+  // Scan debug only: run the scan on a saved photo, to compare readers on the same images.
+  const pickPhoto = useCallback(async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
+    const asset = result.canceled ? null : result.assets[0];
+    if (asset) await scanImage({ uri: asset.uri, width: asset.width, height: asset.height, fileName: asset.fileName ?? undefined });
+  }, [scanImage]);
 
   if (!permission) return <View style={styles.container} />;
 
@@ -261,6 +271,17 @@ export default function CameraScreen() {
       ) : null}
 
       <View style={styles.shutterWrap}>
+        {debug ? (
+          <Pressable
+            style={styles.pickButton}
+            onPress={pickPhoto}
+            disabled={!!detecting}
+            accessibilityRole="button"
+            accessibilityLabel="Scan a photo from the library"
+          >
+            <Text style={styles.pickButtonText}>Photos</Text>
+          </Pressable>
+        ) : null}
         <Pressable
           style={[styles.shutter, !!detecting && styles.shutterDisabled]}
           onPress={takePhoto}
@@ -356,6 +377,18 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
   },
   shutterDisabled: { opacity: 0.5 },
+  // Level with the shutter (66 tall, below the wrap's top padding).
+  pickButton: {
+    position: 'absolute',
+    left: spacing(8),
+    top: spacing(5.5) + 13,
+    height: 40,
+    paddingHorizontal: spacing(3.5),
+    borderRadius: 20,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  pickButtonText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
   detectingText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
   permissionText: {
     color: colors.ink,

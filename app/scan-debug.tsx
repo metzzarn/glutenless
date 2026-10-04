@@ -108,6 +108,7 @@ function scanReport(
           }),
         ];
   return [
+    ...(scan.photo.fileName ? [`File: ${scan.photo.fileName}`] : []),
     `Mode: ${scan.mode}`,
     'Normal scan:',
     ...outcome,

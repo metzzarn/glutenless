@@ -5,7 +5,8 @@ import type { PhotoScan, ScanMode } from './ocr';
 /** A finished scan plus the photo it came from, for the scan debug screen. */
 export type DebugScan = PhotoScan & {
   mode: ScanMode;
-  photo: { uri: string; width: number; height: number };
+  /** `fileName` is set for a photo picked from the library. */
+  photo: { uri: string; width: number; height: number; fileName?: string };
   durationMs: number;
 };
 

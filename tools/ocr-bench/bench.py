@@ -32,7 +32,7 @@ def easyocr_reader():
     return read
 
 
-def paddle_reader(det_model, rec_model):
+def paddle_reader(det_model, rec_model, max_side=None):
     from paddleocr import PaddleOCR
 
     ocr = PaddleOCR(
@@ -43,6 +43,9 @@ def paddle_reader(det_model, rec_model):
         use_textline_orientation=False,
         # PaddlePaddle 3.3's oneDNN path fails on these models ("ConvertPirAttribute2RuntimeAttribute not support").
         enable_mkldnn=False,
+        # By default PaddleOCR only enlarges small photos (to 64 px on the short
+        # side) and never shrinks big ones below 4000 px; a phone shrinks them.
+        **({'text_det_limit_side_len': max_side, 'text_det_limit_type': 'max'} if max_side else {}),
     )
 
     def read(path):
@@ -149,6 +152,10 @@ READERS = {
     'paddle-v6-tiny': lambda: paddle_reader('PP-OCRv6_tiny_det', 'PP-OCRv6_tiny_rec'),
     'paddle-v6-small': lambda: paddle_reader('PP-OCRv6_small_det', 'PP-OCRv6_small_rec'),
     'paddle-v6-medium': lambda: paddle_reader('PP-OCRv6_medium_det', 'PP-OCRv6_medium_rec'),
+    # Phone-sized: the photo shrunk so its long side is at most this before finding text.
+    'paddle-v6-small-960': lambda: paddle_reader('PP-OCRv6_small_det', 'PP-OCRv6_small_rec', 960),
+    'paddle-v6-small-1280': lambda: paddle_reader('PP-OCRv6_small_det', 'PP-OCRv6_small_rec', 1280),
+    'paddle-v6-medium-960': lambda: paddle_reader('PP-OCRv6_medium_det', 'PP-OCRv6_medium_rec', 960),
     'waterec': waterec_reader,
     'florence2': florence_reader,
     'trocr-printed': lambda: trocr_reader('printed'),

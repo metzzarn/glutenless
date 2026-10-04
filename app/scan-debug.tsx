@@ -14,6 +14,7 @@ import {
   type LabelReaderStatus,
 } from '../lib/aiLabel';
 import { listBeers, type Beer } from '../lib/db';
+import { isOcrModelsAvailable, readLabelOnDevice, type OnDeviceReading } from '../lib/ocrModels';
 import { isGlutenClaimWord, normalizeOcrText, unseenNameWords, type MatchCandidate } from '../lib/match';
 import { getLastScan, type DebugScan } from '../lib/scanDebug';
 import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
@@ -22,6 +23,25 @@ const mono = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
 /** Whether Gemini Nano can run for this scan at all. */
 type AiStatus = LabelReaderStatus | 'checking' | 'downloading' | 'cansOnly';
+
+/** PP-OCRv6 + WATERec's reading of the photo, on the phone. */
+type OnDeviceState = { state: 'running' } | { state: 'done'; value: OnDeviceReading } | { state: 'error'; message: string } | null;
+
+function onDeviceLines(onDevice: OnDeviceState): string[] {
+  if (!onDevice) return ['Not run'];
+  if (onDevice.state === 'running') return ['Not finished'];
+  if (onDevice.state === 'error') return [`Error: ${onDevice.message}`];
+  const { result, reading } = onDevice.value;
+  return [
+    `Time: ${reading.durationMs} ms (${Object.entries(result.timings).map(([k, v]) => `${k} ${v}`).join(', ')})`,
+    ...readingLines(reading),
+    'Lines (PP-OCRv6 | WATERec):',
+    ...result.lines.map(
+      (l) =>
+        `- ${l.text} (${l.score.toFixed(2)})` + (l.waterecText !== null ? ` | ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''),
+    ),
+  ];
+}
 
 /** One setup's reading of the photo. */
 type VariantResult =
@@ -94,6 +114,7 @@ function scanReport(
   aiStatus: AiStatus,
   results: Record<string, VariantResult>,
   outcome: string[],
+  onDevice: OnDeviceState,
 ): string {
   const aiLines =
     aiStatus !== 'available'
@@ -123,6 +144,9 @@ function scanReport(
     'OCR text:',
     scan.text,
     '',
+    '--- PP-OCRv6 + WATERec (on-device) ---',
+    ...onDeviceLines(onDevice),
+    '',
     '--- Gemini Nano ---',
     ...aiLines,
   ].join('\n');
@@ -138,6 +162,7 @@ export default function ScanDebugScreen() {
   const [aiStatus, setAiStatus] = useState<AiStatus>('checking');
   const [results, setResults] = useState<Record<string, VariantResult>>({});
   const [beers, setBeers] = useState<Beer[]>([]);
+  const [onDevice, setOnDevice] = useState<OnDeviceState>(null);
   const setResult = (id: string, result: VariantResult) => setResults((r) => ({ ...r, [id]: result }));
 
   const runVariant = async (variant: AiVariant, beers: Beer[], download = false) => {
@@ -176,9 +201,20 @@ export default function ScanDebugScreen() {
     }
   };
 
+  // PP-OCRv6 + WATERec on the same photo. Before Nano, so the two don't share the CPU while being timed.
+  const runOnDevice = async () => {
+    if (!scan || !isOcrModelsAvailable) return;
+    setOnDevice({ state: 'running' });
+    try {
+      setOnDevice({ state: 'done', value: await readLabelOnDevice(scan.photo.uri, await listBeers('all', '')) });
+    } catch (e) {
+      setOnDevice({ state: 'error', message: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
   useEffect(() => {
     // The prompts are written for a single label; menus aren't compared yet.
-    if (scan?.mode === 'can') runAi(false);
+    if (scan?.mode === 'can') runOnDevice().then(() => runAi(false));
     else setAiStatus('cansOnly');
   }, []);
 
@@ -227,7 +263,7 @@ export default function ScanDebugScreen() {
         <Text style={styles.title}>Scan debug</Text>
         <Pressable
           style={styles.shareButton}
-          onPress={() => Share.share({ message: scanReport(scan, aiStatus, results, outcome) })}
+          onPress={() => Share.share({ message: scanReport(scan, aiStatus, results, outcome, onDevice) })}
           accessibilityRole="button"
         >
           <Text style={styles.shareText}>Share report</Text>
@@ -256,6 +292,39 @@ export default function ScanDebugScreen() {
           </Pressable>
         ) : null}
       </View>
+
+      {onDevice ? (
+        <>
+          <Text style={styles.sectionTitle}>PP-OCRv6 + WATERec (on-device)</Text>
+          <View style={styles.verdict}>
+            {onDevice.state === 'running' ? <Text style={styles.verdictTitle}>Reading…</Text> : null}
+            {onDevice.state === 'error' ? (
+              <>
+                <Text style={styles.verdictTitle}>Failed</Text>
+                <Text selectable style={styles.meta}>{onDevice.message}</Text>
+              </>
+            ) : null}
+            {onDevice.state === 'done' ? (
+              <>
+                <Text style={styles.verdictTitle}>{verdict(onDevice.value.reading)}</Text>
+                <Text style={styles.meta}>
+                  {onDevice.value.reading.durationMs} ms ·{' '}
+                  {Object.entries(onDevice.value.result.timings).map(([k, v]) => `${k} ${v}`).join(' · ')}
+                </Text>
+                <Text selectable style={[styles.code, { marginTop: spacing(2) }]}>
+                  {onDevice.value.result.lines
+                    .map(
+                      (l) =>
+                        `${l.text} (${l.score.toFixed(2)})` +
+                        (l.waterecText !== null ? `\n  ↳ WATERec: ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''),
+                    )
+                    .join('\n') || '(no text found)'}
+                </Text>
+              </>
+            ) : null}
+          </View>
+        </>
+      ) : null}
 
       <Text style={styles.sectionTitle}>Gemini Nano (on-device AI)</Text>
       {aiStatus !== 'available' ? (

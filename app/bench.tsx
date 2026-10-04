@@ -1,7 +1,10 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { benchmarkAsync, modelDir, type BenchInput, type BenchResult } from '../modules/ocr-models';
+import { listBeers } from '../lib/db';
+import { readLabelOnDevice } from '../lib/ocrModels';
+import { benchmarkAsync, listImages, modelDir, type BenchInput, type BenchResult } from '../modules/ocr-models';
 import { fonts, spacing, useStyles, type Palette } from '../lib/theme';
 
 /**
@@ -9,6 +12,10 @@ import { fonts, spacing, useStyles, type Palette } from '../lib/theme';
  * `adb shell am start -a android.intent.action.VIEW -d glutenless://bench`
  * after pushing the models to the app's external files dir (onnx/). Results
  * also go to logcat under GlutenlessBench and ReactNativeJS.
+ *
+ * With ?mode=read, it instead reads every photo in the app's external files
+ * dir (images/) with PP-OCRv6 + WATERec and logs the text, the match and
+ * the time, for comparing with the desktop bench.
  */
 const CASES: { label: string; file: string; inputs: BenchInput[] }[] = [
   { label: 'PP-OCRv6 small, detect, 960×736', file: 'PP-OCRv6_small_det.onnx', inputs: [{ name: 'x', shape: [1, 3, 960, 736] }] },
@@ -35,8 +42,35 @@ export default function BenchScreen() {
   const styles = useStyles(makeStyles);
   const [rows, setRows] = useState<Row[]>([]);
   const [done, setDone] = useState(false);
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
 
   useEffect(() => {
+    if (mode === 'read') {
+      (async () => {
+        const beers = await listBeers('all', '');
+        for (const uri of listImages()) {
+          const name = decodeURIComponent(uri.split('/').pop() ?? uri);
+          try {
+            const { result, reading } = await readLabelOnDevice(uri, beers);
+            const verdict = reading.matches.length
+              ? `matched ${reading.matches[0].name}`
+              : reading.suggestions.length
+                ? `suggested ${reading.suggestions.map((b) => b.name).join(', ')}`
+                : 'no match';
+            const lines = result.lines.map((l) => `${l.text} (${l.score.toFixed(2)})${l.waterecText !== null ? ` | W: ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''}`);
+            console.log(`READ ${name} :: ${verdict} :: ${reading.durationMs} ms ${JSON.stringify(result.timings)} :: ${JSON.stringify(lines)}`);
+            setRows((r) => [...r, { label: name, error: `${verdict} · ${reading.durationMs} ms` }]);
+          } catch (e) {
+            const error = e instanceof Error ? e.message : String(e);
+            console.log(`READ ${name} :: ERROR ${error}`);
+            setRows((r) => [...r, { label: name, error }]);
+          }
+        }
+        console.log('READ done');
+        setDone(true);
+      })();
+      return;
+    }
     (async () => {
       console.log(`BENCH start, models in ${modelDir()}`);
       for (const provider of ['cpu', 'xnnpack'] as const) {

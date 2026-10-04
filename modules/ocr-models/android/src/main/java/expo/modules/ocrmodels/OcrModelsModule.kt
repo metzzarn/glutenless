@@ -3,6 +3,7 @@ package expo.modules.ocrmodels
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
 import expo.modules.kotlin.functions.Coroutine
@@ -23,11 +24,13 @@ data class BenchInput(
 ) : Record
 
 /**
- * On-device OCR models (ONNX) for label reading. For now it only times them,
- * to decide whether PP-OCRv6 and WATERec are fast enough on a phone.
+ * On-device OCR models (ONNX) for label reading: PP-OCRv6 and WATERec (see
+ * LabelOcr), plus a timing function used to choose them.
  */
 class OcrModelsModule : Module() {
   private val env by lazy { OrtEnvironment.getEnvironment() }
+  private val modelFiles get() = appContext.reactContext?.getExternalFilesDir("onnx") ?: throw IllegalStateException("No model directory")
+  private val ocr by lazy { LabelOcr(env, modelFiles) }
 
   override fun definition() = ModuleDefinition {
     Name("OcrModels")
@@ -35,6 +38,36 @@ class OcrModelsModule : Module() {
     /** Where models are read from: the app's external files dir, writable over adb. */
     Function("modelDir") {
       appContext.reactContext?.getExternalFilesDir("onnx")?.absolutePath
+    }
+
+    /** Debug: file:// URIs of the photos in the app's external files dir (images/), for reading them all. */
+    Function("listImages") {
+      appContext.reactContext?.getExternalFilesDir("images")?.listFiles()
+        ?.filter { it.isFile }?.sortedBy { it.name }?.map { Uri.fromFile(it).toString() } ?: emptyList<String>()
+    }
+
+    /**
+     * Reads a label photo (a file:// URI). Lines PP-OCRv6 read with a mean
+     * confidence below `waterecBelow` are read again by WATERec, the largest
+     * `maxWaterecLines` of them.
+     */
+    AsyncFunction("readAsync") { uri: String, waterecBelow: Double, maxWaterecLines: Int ->
+      synchronized(ocr) {
+        val path = Uri.parse(uri).path ?: throw IllegalArgumentException("Not a file URI: $uri")
+        val lines = ocr.read(path, waterecBelow.toFloat(), maxWaterecLines)
+        mapOf(
+          "lines" to lines.map {
+            mapOf(
+              "text" to it.text,
+              "score" to it.score.toDouble(),
+              "frame" to mapOf("left" to it.left, "top" to it.top, "width" to it.width, "height" to it.height),
+              "waterecText" to it.waterecText,
+              "waterecScore" to it.waterecScore?.toDouble(),
+            )
+          },
+          "timings" to ocr.timings.toMap(),
+        )
+      }
     }
 
     AsyncFunction("benchmarkAsync") Coroutine { modelFile: String, inputs: List<BenchInput>, runs: Int, provider: String ->

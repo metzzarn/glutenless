@@ -32,13 +32,12 @@ def easyocr_reader():
     return read
 
 
-def paddle_reader(version):
+def paddle_reader(det_model, rec_model):
     from paddleocr import PaddleOCR
 
-    # The mobile models: the size that would run on a phone.
     ocr = PaddleOCR(
-        text_detection_model_name=f'PP-OCR{version}_mobile_det',
-        text_recognition_model_name=f'{"en_" if version == "v4" else ""}PP-OCR{version}_mobile_rec',
+        text_detection_model_name=det_model,
+        text_recognition_model_name=rec_model,
         use_doc_orientation_classify=False,
         use_doc_unwarping=False,
         use_textline_orientation=False,
@@ -48,6 +47,47 @@ def paddle_reader(version):
 
     def read(path):
         return '\n'.join(text for result in ocr.predict(str(path)) for text in result['rec_texts'])
+
+    return read
+
+
+def waterec_reader():
+    """
+    WATERec (ECCV 2026) reads artistic lettering, one cropped line at a time.
+    PP-OCRv6's detector finds the lines. Code and the RS checkpoint (real +
+    synthetic training, 90.4% on WordArt-Bench) live in .cache/.
+    """
+    import os
+
+    from paddleocr import TextDetection
+
+    repo = HERE / '.cache' / 'OpenOCR-WATERec'
+    sys.path.insert(0, str(repo))
+    cwd = os.getcwd()
+    os.chdir(repo)  # its config paths are relative to the repo
+    try:
+        from tools.engine.config import Config
+        from tools.infer_rec import OpenRecognizer
+
+        cfg = Config(str(repo / 'configs/rec/waterec/navit_ar.yml')).cfg
+        cfg['Global']['pretrained_model'] = str(HERE / '.cache' / 'WATERec-RS.pth')
+        recognizer = OpenRecognizer(cfg, backend='torch')
+    finally:
+        os.chdir(cwd)
+    detector = TextDetection(model_name='PP-OCRv6_medium_det', enable_mkldnn=False)
+
+    def read(path):
+        image = Image.open(path).convert('RGB')
+        crops = []
+        for result in detector.predict(str(path)):
+            for poly in result['dt_polys']:
+                xs, ys = [p[0] for p in poly], [p[1] for p in poly]
+                crop = image.crop((max(0, min(xs)), max(0, min(ys)), max(xs), max(ys)))
+                if crop.width >= 4 and crop.height >= 4:
+                    crops.append(crop)
+        if not crops:
+            return ''
+        return '\n'.join(r['text'] for r in recognizer(img_numpy_list=crops))
 
     return read
 
@@ -104,8 +144,12 @@ def trocr_reader(variant):
 
 READERS = {
     'easyocr': easyocr_reader,
-    'paddle-v4': lambda: paddle_reader('v4'),
-    'paddle-v5': lambda: paddle_reader('v5'),
+    'paddle-v4': lambda: paddle_reader('PP-OCRv4_mobile_det', 'en_PP-OCRv4_mobile_rec'),
+    'paddle-v5': lambda: paddle_reader('PP-OCRv5_mobile_det', 'PP-OCRv5_mobile_rec'),
+    'paddle-v6-tiny': lambda: paddle_reader('PP-OCRv6_tiny_det', 'PP-OCRv6_tiny_rec'),
+    'paddle-v6-small': lambda: paddle_reader('PP-OCRv6_small_det', 'PP-OCRv6_small_rec'),
+    'paddle-v6-medium': lambda: paddle_reader('PP-OCRv6_medium_det', 'PP-OCRv6_medium_rec'),
+    'waterec': waterec_reader,
     'florence2': florence_reader,
     'trocr-printed': lambda: trocr_reader('printed'),
     'trocr-handwritten': lambda: trocr_reader('handwritten'),

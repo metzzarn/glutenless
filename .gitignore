@@ -51,3 +51,4 @@ tools/ocr-bench/images/
 tools/ocr-bench/.venv/
 tools/ocr-bench/*.log
 tools/ocr-bench/results.json
+tools/ocr-bench/.cache/

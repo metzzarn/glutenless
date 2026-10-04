@@ -16,8 +16,8 @@ import {
 
 export type ScanMode = 'can' | 'menu';
 
-/** What read the text: the on-device models for cans on Android, otherwise the platform's text recognition. */
-export type Reader = 'PP-OCRv6 + WATERec' | 'ML Kit' | 'Apple Vision';
+/** What read the text: the on-device models on Android, otherwise the platform's text recognition. */
+export type Reader = 'PP-OCRv6 + WATERec' | 'PP-OCRv6' | 'ML Kit' | 'Apple Vision';
 
 /** What a photo scan found, kept whole so the scan debug screen can show how it got there. */
 export type PhotoScan = {
@@ -77,6 +77,16 @@ export async function recognizeText(uri: string): Promise<TextRecognitionResult>
   return TextRecognition.recognize(uri);
 }
 
+/** An on-device reader's line as an ML Kit block, so the rest of the app handles both alike. */
+function lineBlock(l: Pick<OcrLine, 'text' | 'frame'>): TextBlock {
+  return {
+    text: l.text,
+    frame: l.frame,
+    lines: [{ text: l.text, frame: l.frame, elements: [], recognizedLanguages: [] }],
+    recognizedLanguages: [],
+  };
+}
+
 /**
  * Matches a can's text from the on-device reader. PP-OCRv6's lines alone
  * decide a match; a beer that only matches with WATERec's readings added is
@@ -92,12 +102,7 @@ export function matchCanLines(lines: Pick<OcrLine, 'text' | 'waterecText' | 'fra
   return {
     matches: match ? [match] : [],
     confirm,
-    blocks: lines.map((l) => ({
-      text: l.text,
-      frame: l.frame,
-      lines: [{ text: l.text, frame: l.frame, elements: [], recognizedLanguages: [] }],
-      recognizedLanguages: [],
-    })),
+    blocks: lines.map(lineBlock),
     text,
     candidates,
     suggestions: match ? [] : suggestByBrewery(candidates, beers),
@@ -110,10 +115,11 @@ export function matchCanLines(lines: Pick<OcrLine, 'text' | 'waterecText' | 'fra
  * used: the dataset has no barcode numbers, and a guessed match could show a
  * gluten-containing beer as gluten-free.
  *
- * Cans are read with the on-device models where they're bundled (Android),
- * falling back to the platform's text recognition if they fail. Menus always
- * use the platform's: the models work on the photo shrunk to 960 px, too
- * small for a menu's print.
+ * Photos are read with the on-device models where they're bundled
+ * (Android), falling back to the platform's text recognition if they fail.
+ * A menu's text is found at 1600 px rather than a label's 960, for its small
+ * print, and without WATERec, whose guesses would be matched as menu entries.
+ * On 9 real menus it found 10 of 10 listed beers, against ML Kit's 9.
  */
 export async function scanPhoto(
   photoUri: string,
@@ -121,10 +127,25 @@ export async function scanPhoto(
   beers: Beer[],
   { platformOnly = false } = {},
 ): Promise<PhotoScan> {
-  if (mode === 'can' && isOcrModelsAvailable && !platformOnly) {
+  if (isOcrModelsAvailable && !platformOnly) {
     try {
-      const { lines, timings } = await readAsync(photoUri);
-      return { reader: 'PP-OCRv6 + WATERec', ...matchCanLines(lines, beers), ocrLines: lines, timings };
+      if (mode === 'can') {
+        const { lines, timings } = await readAsync(photoUri);
+        return { reader: 'PP-OCRv6 + WATERec', ...matchCanLines(lines, beers), ocrLines: lines, timings };
+      }
+      const { lines, timings } = await readAsync(photoUri, { maxWaterecLines: 0, detectMaxSide: 1600 });
+      const text = lines.map((l) => l.text).join('\n');
+      return {
+        reader: 'PP-OCRv6',
+        matches: matchBeersInMenuText(text, beers),
+        confirm: null,
+        blocks: lines.map(lineBlock),
+        text,
+        candidates: findMenuCandidates(text, beers),
+        suggestions: [],
+        ocrLines: lines,
+        timings,
+      };
     } catch {
       // Fall through to the platform's text recognition.
     }

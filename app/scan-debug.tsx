@@ -210,7 +210,7 @@ export default function ScanDebugScreen() {
   // ML Kit on the same photo, when the scan used the on-device reader. Before
   // Nano, so the two don't share the CPU while being timed.
   const runComparison = async () => {
-    if (!scan || scan.reader !== 'PP-OCRv6 + WATERec') return;
+    if (!scan || !scan.reader.startsWith('PP-OCRv6')) return;
     setComparison({ state: 'running' });
     try {
       setComparison({ state: 'done', scan: await scanPhoto(scan.photo.uri, scan.mode, await listBeers('all', ''), { platformOnly: true }) });
@@ -222,7 +222,10 @@ export default function ScanDebugScreen() {
   useEffect(() => {
     // The prompts are written for a single label; menus aren't compared yet.
     if (scan?.mode === 'can') runComparison().then(() => runAi(false));
-    else setAiStatus('cansOnly');
+    else {
+      runComparison();
+      setAiStatus('cansOnly');
+    }
   }, []);
 
   if (!scan) {

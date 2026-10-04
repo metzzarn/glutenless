@@ -57,6 +57,9 @@ function isGenericName(name: string): boolean {
   return name.split(' ').every((word) => STYLE_WORDS.has(word));
 }
 
+/** Style words that say nothing about which beer: a menu line's "Craft Beer" doesn't rule out a name without them. */
+const NEUTRAL_WORDS = new Set(['beer', 'bier', 'birra', 'biere', 'cerveza', 'craft', 'the', 'and', 'of', 'with']);
+
 const BREWERY_STOP_WORDS = new Set([
   'brewing', 'beer', 'beers', 'brewery', 'breweries', 'co', 'company', 'the', 'craft',
 ]);
@@ -250,22 +253,27 @@ function vocabulary(beers: Beer[]): Set<string> {
 /**
  * A run-together OCR word as words from our list, in the fewest pieces:
  * "nastroazzurro" → "nastro azzurro", "indiapaleale" → "india pale ale".
- * Some readers drop spaces (WATERec never outputs them). Null when the word
- * is already one of ours or can't be split entirely into ours.
+ * Some readers drop spaces (WATERec never outputs them). A slash read as an
+ * "i" or "l" after a word is dropped: "PEACH/GRAPEFRUIT" reads as
+ * "peachigrapefruit" or "peachi grapefruit". Null when the word is already
+ * one of ours or can't be split entirely into ours.
  */
 function splitIntoWords(word: string, words: Set<string>): string[] | null {
   if (word.length < 6 || words.has(word)) return null;
+  const isSlash = (piece: string) => piece === 'i' || piece === 'l';
+  // best[end]: the fewest pieces (slashes included, so they cost one) covering word[0, end).
   const best: (string[] | null)[] = [[]];
   for (let end = 1; end <= word.length; end++) {
     best[end] = null;
-    for (let start = Math.max(0, end - 30); start <= end - 2; start++) {
+    for (let start = Math.max(0, end - 30); start <= end - 1; start++) {
       const before = best[start];
-      if (!before || !words.has(word.slice(start, end))) continue;
-      if (!best[end] || before.length + 1 < best[end]!.length) best[end] = [...before, word.slice(start, end)];
+      const piece = word.slice(start, end);
+      if (!before || !(piece.length >= 2 ? words.has(piece) : start > 0 && isSlash(piece) && !isSlash(before.at(-1)!))) continue;
+      if (!best[end] || before.length + 1 < best[end]!.length) best[end] = [...before, piece];
     }
   }
   const pieces = best[word.length];
-  return pieces && pieces.length >= 2 ? pieces : null;
+  return pieces && pieces.length >= 2 ? pieces.filter((piece) => piece.length >= 2) : null;
 }
 
 /**
@@ -497,18 +505,45 @@ export function isGlutenClaimWord(word: string): boolean {
   return tokens.length > 0 && tokens.every((t) => GLUTEN_CLAIM_WORDS.has(t));
 }
 
-/** Every beer name found in a menu's OCR text, including the ones the matcher discards. */
+/**
+ * Every beer found in a menu's OCR text, including the ones the matcher
+ * discards. A menu lists many beers, so unlike a label it can match several,
+ * and other breweries on it don't count against a name. Three ways a beer
+ * is found:
+ *
+ * - Its whole name, as whole words ("AVA" must not match inside
+ *   "AVAILABLE"). A name of only style words ("IPA") needs its brewery
+ *   within two lines.
+ * - Its brewery and the rest of its name on one line, where menus print an
+ *   entry: "Brewdog Vagabond" is Vagabond Pale Ale. Style words may be left
+ *   out, but not gluten-free claims ("Brewdog Punk IPA" is not Gluten-Free
+ *   Punk IPA), nor a style the line names ("BrewDog Vagabond Red" isn't
+ *   Vagabond Pale Ale). Names read in full come first, the fullest winning
+ *   ("Kukko Pils Alkoholiton" over "Kukko Pils"); otherwise the line must
+ *   fit only one of the brewery's beers.
+ * - Its brewery and a gluten-free claim on one line, when exactly one of the
+ *   brewery's beers claiming it fits the line's other words: "Peroni Gluten
+ *   Free" is Peroni Nastro Azzurro Gluten Free, "Omnipollo Gluten Free,
+ *   Pilsner" is Stellaris (Pilsner), not Luz (Mexican Lager).
+ */
 export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[] {
-  const haystack = normalize(text);
-  if (!haystack) return [];
-  const joinedHaystack = readings(text).at(-1)!.join(' ');
-
+  const words = vocabulary(beers);
+  const textReadings = readings(text, words);
+  if (!textReadings[0].length) return [];
   const lines = text.split('\n').map(normalize);
+  const lineReadings = text.split('\n').map((line) => readings(line, words));
+  const has = (reading: string[][], word: string) => reading.some((r) => r.includes(word));
 
   const candidates: MatchCandidate[] = [];
+  const found = new Set<number>();
+  const add = (candidate: MatchCandidate) => {
+    candidates.push(candidate);
+    if (!candidate.rejected) found.add(candidate.beer.id);
+  };
+
   for (const beer of beers) {
     const name = normalize(beer.name);
-    if (!name || !(haystack.includes(name) || joinedHaystack.includes(name))) continue;
+    if (!name || !textReadings.some((r) => ` ${r.join(' ')} `.includes(` ${name} `))) continue;
     let rejected: string | undefined;
     if (isGenericName(name)) {
       const token = breweryToken(beer.brewery);
@@ -516,8 +551,73 @@ export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[
         rejected = `generic name without brewery "${token}" nearby`;
       }
     }
-    candidates.push({ beer, field: 'name', needle: name, found: name, rejected });
+    add({ beer, field: 'name', needle: name, found: name, rejected });
   }
+
+  const byBrewery = new Map<string, Beer[]>();
+  for (const beer of beers) byBrewery.set(beer.brewery, [...(byBrewery.get(beer.brewery) ?? []), beer]);
+
+  lineReadings.forEach((reading, i) => {
+    for (const [brewery, breweryBeers] of byBrewery) {
+      const key = breweryKeys(brewery).find((k) => k.split(' ').every((w) => has(reading, w)));
+      if (!key) continue;
+      const breweryWords = new Set(normalize(brewery).split(' '));
+      // The words of each beer's name that aren't its brewery's.
+      const own = (beer: Beer) => normalize(beer.name).split(' ').filter((w) => w && !breweryWords.has(w));
+      // A style the line names that a beer's name doesn't rules it out: "BrewDog Vagabond Red" isn't Vagabond Pale Ale.
+      const lineStyles = (reading[reading.length - 1] ?? []).filter(
+        (w) => STYLE_WORDS.has(w) && !GLUTEN_CLAIM_WORDS.has(w) && !NEUTRAL_WORDS.has(w) && !breweryWords.has(w),
+      );
+      const styleFits = (beer: Beer) => lineStyles.every((w) => own(beer).includes(w));
+
+      // Brewery + the rest of the name.
+      const fits = breweryBeers.filter((beer) => {
+        const rest = own(beer);
+        const needed = distinctiveWords(rest.join(' '));
+        return needed.some((w) => !STYLE_WORDS.has(w)) && needed.every((w) => has(reading, w)) && styleFits(beer);
+      });
+      // Beers with every word of their name on the line come first ("Daura
+      // Damm" isn't Daura IPA with "IPA" left out), the fullest of them
+      // ("Kukko Pils Alkoholiton" over "Kukko Pils"); otherwise a name with
+      // style words left out must fit only one of the brewery's beers.
+      const complete = fits.filter((beer) => own(beer).every((w) => has(reading, w)));
+      const chosen = complete.length
+        ? complete.filter((fit) => !complete.some((other) => other !== fit && own(fit).every((w) => own(other).includes(w))))
+        : fits;
+      for (const beer of chosen) {
+        if (found.has(beer.id)) continue;
+        add({
+          beer,
+          field: 'name',
+          needle: `${key} … ${distinctiveWords(own(beer).join(' ')).join(' ')}`,
+          found: lines[i],
+          rejected: !complete.length && fits.length > 1 ? `several ${brewery} beers fit the line` : undefined,
+        });
+      }
+      if (fits.length) continue;
+
+      // Brewery + a gluten-free claim, fitting one of its beers that claims it.
+      if (![...GLUTEN_CLAIM_WORDS].some((w) => !breweryWords.has(w) && has(reading, w))) continue;
+      const claiming = breweryBeers.filter((beer) => {
+        const claimWords = own(beer).filter((w) => GLUTEN_CLAIM_WORDS.has(w));
+        return claimWords.length > 0 && claimWords.every((w) => has(reading, w)) && styleFits(beer);
+      });
+      const narrowed =
+        claiming.length > 1
+          ? claiming.filter((beer) => own(beer).some((w) => !GLUTEN_CLAIM_WORDS.has(w) && has(reading, w)))
+          : claiming;
+      if (!narrowed.length) continue;
+      const beer = narrowed[0];
+      if (found.has(beer.id)) continue;
+      add({
+        beer,
+        field: 'name',
+        needle: `${key} … ${own(beer).filter((w) => GLUTEN_CLAIM_WORDS.has(w)).join(' ')}`,
+        found: lines[i],
+        rejected: narrowed.length > 1 ? `several ${brewery} gluten-free beers fit the line` : undefined,
+      });
+    }
+  });
   return candidates;
 }
 

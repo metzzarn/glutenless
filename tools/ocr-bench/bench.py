@@ -4,7 +4,7 @@ with ML Kit before integrating any into the app.
 
     tools/ocr-bench/.venv/bin/python tools/ocr-bench/bench.py [reader ...]
 
-Photos go in tools/ocr-bench/images/, named after what the label says
+Photos go in tools/ocr-bench/images/beers/, named after what the label says
 ("Stone Delicious IPA - bottle.jpg"). Each reader's text is written to
 results.json; score.mts then runs it through the app's own matcher.
 """
@@ -17,7 +17,7 @@ from pathlib import Path
 from PIL import Image
 
 HERE = Path(__file__).parent
-IMAGES = sorted(p for p in (HERE / 'images').iterdir() if p.suffix.lower() in {'.jpg', '.jpeg', '.png', '.webp'})
+IMAGES = sorted(p for p in (HERE / 'images' / 'beers').iterdir() if p.suffix.lower() in {'.jpg', '.jpeg', '.png', '.webp'})
 RESULTS = HERE / 'results.json'
 
 

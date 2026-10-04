@@ -68,11 +68,12 @@ class LabelOcr(private val env: OrtEnvironment, private val open: (String) -> By
     return block().also { timings[name] = (timings[name] ?: 0) + SystemClock.elapsedRealtime() - start }
   }
 
-  fun read(path: String, waterecBelow: Float, maxWaterecLines: Int): List<OcrLine> {
+  /** `detectMaxSide`: the long side the photo is shrunk to for finding text (960 for a label; more for a menu's small print). */
+  fun read(path: String, waterecBelow: Float, maxWaterecLines: Int, detectMaxSide: Float = DET_MAX_SIDE): List<OcrLine> {
     timings.clear()
     val photo = timed("decode") { loadUpright(path) }
     try {
-      val boxes = timed("detect") { detect(photo) }
+      val boxes = timed("detect") { detect(photo, detectMaxSide) }
       val lines = timed("read") { boxes.map { box -> readLine(photo, box) } }
       timed("waterec") {
         lines.indices
@@ -130,12 +131,12 @@ class LabelOcr(private val env: OrtEnvironment, private val open: (String) -> By
 
   /**
    * PP-OCRv6 detection (a DB text-probability map), as PaddleX runs it: long
-   * side at most 960 px, sides rounded to multiples of 32, BGR with ImageNet
+   * side at most `maxSide` (PaddleX: 960 px), sides rounded to multiples of 32, BGR with ImageNet
    * normalization; pixels above 0.2 are text, a region's smallest rotated
    * rectangle needs a mean probability of 0.45, and is grown by unclip ratio 1.4.
    */
-  private fun detect(photo: Bitmap): List<Box> {
-    val ratio = min(1f, DET_MAX_SIDE / max(photo.width, photo.height).toFloat())
+  private fun detect(photo: Bitmap, maxSide: Float): List<Box> {
+    val ratio = min(1f, maxSide / max(photo.width, photo.height).toFloat())
     val w = max(32, ((photo.width * ratio) / 32f).roundToInt() * 32)
     val h = max(32, ((photo.height * ratio) / 32f).roundToInt() * 32)
     val scaled = Bitmap.createScaledBitmap(photo, w, h, true)

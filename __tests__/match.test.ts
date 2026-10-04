@@ -290,6 +290,40 @@ describe('matchBeersInMenuText', () => {
   });
 });
 
+describe('menu entries, from real menus', () => {
+  const menu = (...lines: string[]) => matchBeersInMenuText(lines.join('\n'), beers).map((b) => b.name);
+
+  it('matches names as whole words only', () => {
+    // First Chop's "AVA" was matched inside "AVAILABLE" on a Leeds airport menu.
+    expect(menu('A FULL DRAUGHT BEER', '& CIDER RANGE IS AVAILABLE')).toEqual([]);
+  });
+
+  it('matches a brewery with the rest of the name on one line', () => {
+    expect(menu('GLUTEN-FREE', 'Brewdog Vagabond', 'Non-Alcoholic Beers')).toEqual(['Vagabond Pale Ale']);
+    // A slash read as "I", with and without a space after it.
+    expect(menu('JUBEL PEACHI GRAPEFRUIT, GLUTEN FREE 440ML CAN 4%')).toEqual(['Jubel Peach', 'Jubel Grapefruit']);
+    expect(menu('JUBEL PEACHIGRAPEFRUIT,GLUTENFREE440MLCAN4%')).toEqual(['Jubel Peach', 'Jubel Grapefruit']);
+  });
+
+  it('never drops a gluten-free claim or ignores a style the line names', () => {
+    expect(menu('Brewdog Punk IPA', 'Brewdog Nanny State', 'Brewdog Punk AF')).toEqual([]);
+    expect(menu('BrewDog Vagabond Red Ale')).toEqual([]);
+  });
+
+  it('prefers a name read in full over one with style words left out', () => {
+    expect(menu('Daura Damm .... 8')).toEqual(['Daura Damm']);
+  });
+
+  it('matches a brewery with a gluten-free claim when one of its gluten-free beers fits', () => {
+    expect(menu('Peroni 5% ve', 'Peroni Gluten Free 5% ve', 'Corona Extra 4.5% ve')).toEqual(['Peroni Nastro Azzurro Gluten Free']);
+    expect(menu('Carlsberg Hof, Lager', 'Omnipollo Zodiak, IPA', 'Omnipollo Gluten Free, Pilsner')).toEqual(['Stellaris Gluten-Free Pilsner']);
+    // Omnipollo's gluten-free beers in our list are a pilsner and a Mexican lager.
+    expect(menu('Omnipollo Gluten Free IPA')).toEqual([]);
+    // The regular Peroni and its alcohol-free one aren't gluten-free.
+    expect(menu('PERONI (5.1% ABV) 6.80 (620ml)', 'Peroni 0.0% 330ml ve')).toEqual([]);
+  });
+});
+
 describe('matchBeersInMenuText edge cases', () => {
   const custom = (id: number, name: string, brewery: string) =>
     ({ id, name, brewery, style: '', personalNote: '' }) as Beer;

@@ -61,10 +61,21 @@ describe('scanning a can with the on-device reader', () => {
     expect(scan.matches).toEqual([beers[2]]);
   });
 
-  it('reads menus with ML Kit, whose full resolution suits small print', async () => {
+  it('reads menus at a higher resolution, without WATERec', async () => {
+    reads(line('Brewdog Vagabond'), line('Daura Damm', 'DAURA'));
+    const scan = await scanPhoto('file://menu.jpg', 'menu', beers);
+    expect(scan.reader).toBe('PP-OCRv6');
+    expect(scan.matches).toEqual(expect.arrayContaining([beers[0], beers[2]]));
+    expect(scan.matches).toHaveLength(2);
+    expect(readAsync).toHaveBeenCalledWith('file://menu.jpg', { maxWaterecLines: 0, detectMaxSide: 1600 });
+    expect(TextRecognition.recognize).not.toHaveBeenCalled();
+  });
+
+  it('falls back to ML Kit for a menu when the reader fails', async () => {
+    jest.mocked(readAsync).mockRejectedValue(new Error('decode failed'));
     jest.mocked(TextRecognition.recognize).mockResolvedValue({ text: 'Daura Damm', blocks: [] });
     const scan = await scanPhoto('file://menu.jpg', 'menu', beers);
     expect(scan.reader).toBe('ML Kit');
-    expect(readAsync).not.toHaveBeenCalled();
+    expect(scan.matches).toEqual([beers[2]]);
   });
 });

@@ -51,21 +51,22 @@ class OcrModelsModule : Module() {
       appContext.reactContext?.getExternalFilesDir("onnx")?.absolutePath
     }
 
-    /** Debug: file:// URIs of the photos in the app's external files dir (images/), for reading them all. */
-    Function("listImages") {
-      appContext.reactContext?.getExternalFilesDir("images")?.listFiles()
+    /** Debug: file:// URIs of the photos in a folder of the app's external files dir (images/ or menus/), for reading them all. */
+    Function("listImages") { dir: String ->
+      require(dir == "images" || dir == "menus") { "Unknown photo folder: $dir" }
+      appContext.reactContext?.getExternalFilesDir(dir)?.listFiles()
         ?.filter { it.isFile }?.sortedBy { it.name }?.map { Uri.fromFile(it).toString() } ?: emptyList<String>()
     }
 
     /**
-     * Reads a label photo (a file:// URI). Lines PP-OCRv6 read with a mean
-     * confidence below `waterecBelow` are read again by WATERec, the largest
-     * `maxWaterecLines` of them.
+     * Reads a photo (a file:// URI), finding its text at `detectMaxSide` px.
+     * Lines PP-OCRv6 read with a mean confidence below `waterecBelow` are read
+     * again by WATERec, the largest `maxWaterecLines` of them.
      */
-    AsyncFunction("readAsync") { uri: String, waterecBelow: Double, maxWaterecLines: Int ->
+    AsyncFunction("readAsync") { uri: String, waterecBelow: Double, maxWaterecLines: Int, detectMaxSide: Double ->
       synchronized(ocr) {
         val path = Uri.parse(uri).path ?: throw IllegalArgumentException("Not a file URI: $uri")
-        val lines = ocr.read(path, waterecBelow.toFloat(), maxWaterecLines)
+        val lines = ocr.read(path, waterecBelow.toFloat(), maxWaterecLines, detectMaxSide.toFloat())
         mapOf(
           "lines" to lines.map {
             mapOf(

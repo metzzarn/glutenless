@@ -230,11 +230,61 @@ function joinSpacedLetters(words: string[]): string[] {
   return joined;
 }
 
-/** The OCR words, plus a version with letter-spaced words rejoined when that differs. */
-function readings(text: string): string[][] {
-  const words = normalize(text).split(' ').filter(Boolean);
-  const joined = joinSpacedLetters(words);
-  return joined.length === words.length ? [words] : [words, joined];
+// Every word of our beer list's names and breweries, and the style words, for
+// splitting run-together OCR words. Built once per list.
+const vocabularyCache = new WeakMap<Beer[], Set<string>>();
+function vocabulary(beers: Beer[]): Set<string> {
+  let words = vocabularyCache.get(beers);
+  if (!words) {
+    words = new Set(STYLE_WORDS);
+    for (const beer of beers) {
+      for (const w of normalize(`${beer.name} ${beer.brewery}`).split(' ')) if (w.length >= 2) words.add(w);
+    }
+    vocabularyCache.set(beers, words);
+  }
+  return words;
+}
+
+/**
+ * A run-together OCR word as words from our list, in the fewest pieces:
+ * "nastroazzurro" → "nastro azzurro", "indiapaleale" → "india pale ale".
+ * Some readers drop spaces (WATERec never outputs them). Null when the word
+ * is already one of ours or can't be split entirely into ours.
+ */
+function splitIntoWords(word: string, words: Set<string>): string[] | null {
+  if (word.length < 6 || words.has(word)) return null;
+  const best: (string[] | null)[] = [[]];
+  for (let end = 1; end <= word.length; end++) {
+    best[end] = null;
+    for (let start = Math.max(0, end - 30); start <= end - 2; start++) {
+      const before = best[start];
+      if (!before || !words.has(word.slice(start, end))) continue;
+      if (!best[end] || before.length + 1 < best[end]!.length) best[end] = [...before, word.slice(start, end)];
+    }
+  }
+  const pieces = best[word.length];
+  return pieces && pieces.length >= 2 ? pieces : null;
+}
+
+/**
+ * The OCR words, plus a version with letter-spaced words rejoined, and one
+ * with run-together words split into words from our list, when those differ.
+ */
+function readings(text: string, words?: Set<string>): string[][] {
+  const ocrWords = normalize(text).split(' ').filter(Boolean);
+  const result = [ocrWords];
+  const joined = joinSpacedLetters(ocrWords);
+  if (joined.length !== ocrWords.length) result.push(joined);
+  if (words) {
+    let changed = false;
+    const split = ocrWords.flatMap((w) => {
+      const pieces = splitIntoWords(w, words);
+      if (pieces) changed = true;
+      return pieces ?? [w];
+    });
+    if (changed) result.push(split);
+  }
+  return result;
 }
 
 function findInReadings(ocrReadings: string[][], needle: string): string | null {
@@ -245,7 +295,7 @@ function findInReadings(ocrReadings: string[][], needle: string): string | null 
   // Rejoining can't tell where one spaced-out word ends and the next starts
   // ("D A U R A  D A M M" → "dauradamm"), so also try the name without spaces, exactly.
   const compact = needle.replace(/ /g, '');
-  if (compact !== needle && skeletons(ocrReadings.at(-1)!).includes(skeleton(compact))) return compact;
+  if (compact !== needle && ocrReadings.some((r) => skeletons(r).includes(skeleton(compact)))) return compact;
   // And the other way round: a one-word name read as two ("BREW DOG" for
   // "BrewDog", "ST0 NE" for "Stone").
   if (compact === needle && needle.length >= 5) {
@@ -270,7 +320,7 @@ function findInReadings(ocrReadings: string[][], needle: string): string | null 
  * And a name never counts when the label shows a different brewery from our list.
  */
 export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[] {
-  const ocrReadings = readings(text);
+  const ocrReadings = readings(text, vocabulary(beers));
   if (!ocrReadings[0].length) return [];
 
   const candidates: MatchCandidate[] = [];
@@ -347,6 +397,35 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
     }
   }
 
+  // Every word of a name read, in any order: labels stack words, and some
+  // readers list lines bottom to top ("GLUTENFREE / SinGluten / Galicia /
+  // Estrella"). Only for names with two or more words that aren't style
+  // words, which then stand in for the brewery; gluten-free words still have
+  // to be there. A fit whose words another fit contains gives way to it
+  // ("Daura" to "Daura Damm"); fits left over that aren't the same beer are
+  // ambiguous. Only a fallback: a name read in order wins ("Estrella Damm /
+  // Daura IPA" is Daura IPA, though "Damm" and "Daura" are both there).
+  const nameReadInOrder = candidates.some((c) => c.field === 'name' && !c.rejected);
+  const anyOrder = beers.flatMap((beer) => {
+    if (nameReadInOrder) return [];
+    const words = normalize(beer.name).split(' ');
+    if (words.filter((w) => !STYLE_WORDS.has(w)).length < 2) return [];
+    const found = words.map((w) => findInReadings(ocrReadings, w));
+    return found.every(Boolean) ? [{ beer, words, found: found.join(' ') }] : [];
+  });
+  const fullest = anyOrder.filter(
+    (fit) => !anyOrder.some((other) => other !== fit && other.words.length > fit.words.length && fit.words.every((w) => other.words.includes(w))),
+  );
+  for (const fit of fullest) {
+    candidates.push({
+      beer: fit.beer,
+      field: 'name',
+      needle: fit.words.join(' '),
+      found: fit.found,
+      rejected: fullest.length > 1 ? 'several beers fit the words read' : undefined,
+    });
+  }
+
   // A label showing another brewery from our list, and not this beer's own,
   // is that other brewery's beer of the same name or style.
   const breweriesRead = new Set(candidates.filter((c) => c.field === 'brewery').map((c) => c.beer.brewery));
@@ -401,7 +480,7 @@ export function suggestByBrewery(candidates: MatchCandidate[], beers: Beer[]): B
  * regular Peroni bottle, which contains gluten, is missing "Gluten Free".
  */
 export function unseenNameWords(beer: Beer, texts: string[]): string[] {
-  const textReadings = texts.map(readings);
+  const textReadings = texts.map((t) => readings(t));
   return beer.name.split(/\s+/).filter((word) => {
     const tokens = normalize(word).split(' ').filter(Boolean);
     return tokens.length > 0 && !tokens.every((t) => textReadings.some((r) => findInReadings(r, t)));

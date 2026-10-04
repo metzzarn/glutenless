@@ -44,6 +44,15 @@ const scans: [label: string, text: string, expected: string | null][] = [
   ['Peroni Gluten Free, Nano', 'PERONI\nNASTRO AZZURRO\nGLUTEN FREE', 'Peroni Nastro Azzurro Gluten Free'],
   ['Daura Damm, Nano', 'DAURA\nDAMM\n1676\nGLUTEN-FREE', 'Daura Damm'],
   ['BrewDog Vagabond, Nano', 'BREW DOG\nVAGABOND\nDRAWN\nGLUTEN\nFREE', 'Vagabond Pale Ale'],
+  // WATERec lists lines bottom to top, without spaces; "Sin Gluten" is in script.
+  [
+    'Estrella Galicia Gluten Free bottle, WATERec',
+    'GLUTENFREE\nSinGluten\nGalicia\nEstrella\nCERVEJA\nMAESTROSCERVECEROSDE1906',
+    'Estrella Galicia Gluten Free',
+  ],
+  ['Daura Damm can, WATERec', "CUK-9-054\nES-110-001\nGLUTEN\n<3PPM\nGLUTEN-FREE\n1876\nDAMM\nDAURA\nGLUTEN-FREEBEER", 'Daura Damm'],
+  // A regular Estrella Galicia label: no gluten-free words, so never the gluten-free one.
+  ['Estrella Galicia (regular), made up', 'Estrella\nGalicia\nCERVEZA ESPECIAL\nMAESTROS CERVECEROS DESDE 1906', null],
   // "ALKOHOLITON" is printed away from "Kukko / PILS"; it's the alcohol-free one.
   [
     'Kukko Pils Alkoholiton can, PaddleOCR',

@@ -209,6 +209,14 @@ describe('suggestByBrewery', () => {
     expect(matchBeerByText('DAURA DANN', beers)).toBeNull();
   });
 
+  it('splits run-together words into words from our list', () => {
+    // Real WATERec readings, which never contain spaces.
+    expect(matchBeerByText('BIRRA\nGLUTENFREE\nNASTROAZZURRO\nPERONI', beers)?.name).toBe('Peroni Nastro Azzurro Gluten Free');
+    expect(matchBeerByText('RedIPA\nOxBlood\n.BREWCO.\nLiTTLEOX', beers)?.name).toBe('Ox Blood');
+    // A regular Peroni still lacks "Gluten Free".
+    expect(matchBeerByText('AZZURRO\nPERONI\nINASTRO', beers)).toBeNull();
+  });
+
   it('lists current beers before discontinued ones', () => {
     const discontinued = suggest('GLUTENBERG').map((b) => b.discontinued);
     expect(discontinued).toEqual([...discontinued].sort((a, b) => Number(a) - Number(b)));

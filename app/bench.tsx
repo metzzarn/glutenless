@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listBeers } from '../lib/db';
-import { readLabelOnDevice } from '../lib/ocrModels';
+import { scanPhoto } from '../lib/ocr';
 import { benchmarkAsync, listImages, modelDir, type BenchInput, type BenchResult } from '../modules/ocr-models';
 import { fonts, spacing, useStyles, type Palette } from '../lib/theme';
 
@@ -14,8 +14,8 @@ import { fonts, spacing, useStyles, type Palette } from '../lib/theme';
  * also go to logcat under GlutenlessBench and ReactNativeJS.
  *
  * With ?mode=read, it instead reads every photo in the app's external files
- * dir (images/) with PP-OCRv6 + WATERec and logs the text, the match and
- * the time, for comparing with the desktop bench.
+ * dir (images/) the way a can scan does (PP-OCRv6 + WATERec) and logs the
+ * text, the outcome and the time, for comparing with the desktop bench.
  */
 const CASES: { label: string; file: string; inputs: BenchInput[] }[] = [
   { label: 'PP-OCRv6 small, detect, 960×736', file: 'PP-OCRv6_small_det.onnx', inputs: [{ name: 'x', shape: [1, 3, 960, 736] }] },
@@ -52,15 +52,19 @@ export default function BenchScreen() {
         for (const uri of listImages()) {
           const name = decodeURIComponent(uri.split('/').pop() ?? uri);
           try {
-            const { result, reading } = await readLabelOnDevice(uri, beers);
-            const verdict = reading.matches.length
-              ? `matched ${reading.matches[0].name}`
-              : reading.suggestions.length
-                ? `suggested ${reading.suggestions.map((b) => b.name).join(', ')}`
-                : 'no match';
-            const lines = result.lines.map((l) => `${l.text} (${l.score.toFixed(2)})${l.waterecText !== null ? ` | W: ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''}`);
-            console.log(`READ ${name} :: ${verdict} :: ${reading.durationMs} ms ${JSON.stringify(result.timings)} :: ${JSON.stringify(lines)}`);
-            setRows((r) => [...r, { label: name, note: `${verdict} · ${reading.durationMs} ms` }]);
+            const started = Date.now();
+            const scan = await scanPhoto(uri, 'can', beers);
+            const ms = Date.now() - started;
+            const verdict = scan.matches.length
+              ? `matched ${scan.matches[0].name}`
+              : scan.confirm
+                ? `asks "Is this ${scan.confirm.name}?"`
+                : scan.suggestions.length
+                  ? `suggested ${scan.suggestions.map((b) => b.name).join(', ')}`
+                  : 'no match';
+            const lines = (scan.ocrLines ?? []).map((l) => `${l.text} (${l.score.toFixed(2)})${l.waterecText !== null ? ` | W: ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''}`);
+            console.log(`READ ${name} :: ${verdict} :: ${ms} ms ${scan.reader} ${JSON.stringify(scan.timings ?? {})} :: ${JSON.stringify(lines)}`);
+            setRows((r) => [...r, { label: name, note: `${verdict} · ${ms} ms · ${scan.reader}` }]);
           } catch (e) {
             const error = e instanceof Error ? e.message : String(e);
             console.log(`READ ${name} :: ERROR ${error}`);

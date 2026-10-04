@@ -14,8 +14,9 @@ import {
   type LabelReaderStatus,
 } from '../lib/aiLabel';
 import { listBeers, type Beer } from '../lib/db';
-import { isOcrModelsAvailable, readLabelOnDevice, type OnDeviceReading } from '../lib/ocrModels';
 import { isGlutenClaimWord, normalizeOcrText, unseenNameWords, type MatchCandidate } from '../lib/match';
+import { scanPhoto, type PhotoScan } from '../lib/ocr';
+import type { OcrLine } from '../modules/ocr-models';
 import { getLastScan, type DebugScan } from '../lib/scanDebug';
 import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
@@ -24,24 +25,24 @@ const mono = Platform.select({ ios: 'Menlo', default: 'monospace' });
 /** Whether Gemini Nano can run for this scan at all. */
 type AiStatus = LabelReaderStatus | 'checking' | 'downloading' | 'cansOnly';
 
-/** PP-OCRv6 + WATERec's reading of the photo, on the phone. */
-type OnDeviceState = { state: 'running' } | { state: 'done'; value: OnDeviceReading } | { state: 'error'; message: string } | null;
+/** The platform's text recognition on the same photo, when the scan itself used the on-device reader. */
+type Comparison = { state: 'running' } | { state: 'done'; scan: PhotoScan } | { state: 'error'; message: string } | null;
 
-function onDeviceLines(onDevice: OnDeviceState): string[] {
-  if (!onDevice) return ['Not run'];
-  if (onDevice.state === 'running') return ['Not finished'];
-  if (onDevice.state === 'error') return [`Error: ${onDevice.message}`];
-  const { result, reading } = onDevice.value;
-  return [
-    `Time: ${reading.durationMs} ms (${Object.entries(result.timings).map(([k, v]) => `${k} ${v}`).join(', ')})`,
-    ...readingLines(reading),
-    'Lines (PP-OCRv6 | WATERec):',
-    ...result.lines.map(
-      (l) =>
-        `- ${l.text} (${l.score.toFixed(2)})` + (l.waterecText !== null ? ` | ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''),
-    ),
-  ];
+function comparisonLines(comparison: Comparison): string[] {
+  if (!comparison) return ['Not run'];
+  if (comparison.state === 'running') return ['Not finished'];
+  if (comparison.state === 'error') return [`Error: ${comparison.message}`];
+  return readingLines(comparison.scan);
 }
+
+/** The on-device reader's lines, each with WATERec's reading when it had one. */
+function ocrLineTexts(lines: OcrLine[]): string[] {
+  return lines.map(
+    (l) => `${l.text} (${l.score.toFixed(2)})` + (l.waterecText !== null ? ` | W: ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''),
+  );
+}
+
+const timingText = (timings: Record<string, number>) => Object.entries(timings).map(([k, v]) => `${k} ${v}`).join(' · ');
 
 /** One setup's reading of the photo. */
 type VariantResult =
@@ -50,8 +51,9 @@ type VariantResult =
   | { state: 'error'; message: string };
 
 /** What the camera would do with these results, in one line. */
-function verdict({ matches, suggestions }: { matches: Beer[]; suggestions: Beer[] }): string {
+function verdict({ matches, suggestions, confirm }: { matches: Beer[]; suggestions: Beer[]; confirm?: Beer | null }): string {
   if (matches.length) return `Matched ${matches.length === 1 ? matches[0].name : `${matches.length} beers`}`;
+  if (confirm) return `Matched ${confirm.name} only with WATERec's readings: the app would ask to confirm`;
   if (suggestions.length) {
     return `No match: the app would suggest ${suggestions.length} ${suggestions[0].brewery} beer${suggestions.length === 1 ? '' : 's'}`;
   }
@@ -70,7 +72,7 @@ function candidateLines(candidates: MatchCandidate[]): string[] {
 
 const beerList = (beers: Beer[]) => beers.map((b) => `${b.name} | ${b.brewery}`).join(', ');
 
-function readingLines(reading: AiLabelReading): string[] {
+function readingLines(reading: Pick<AiLabelReading, 'matches' | 'suggestions' | 'candidates' | 'text'>): string[] {
   return [
     `Matched: ${beerList(reading.matches) || 'nothing'}`,
     ...(reading.suggestions.length ? [`Suggested: ${beerList(reading.suggestions)}`] : []),
@@ -82,13 +84,15 @@ function readingLines(reading: AiLabelReading): string[] {
 }
 
 /**
- * What the camera does with this photo outside debug mode, as lines: ML Kit's
- * match if it has one, otherwise Gemini Nano's (to confirm), otherwise
- * suggestions or the warning. Mirrors app/camera.tsx.
+ * What the camera does with this photo outside debug mode, as lines: the
+ * reader's match if it has one, otherwise one that needed WATERec's readings
+ * (to confirm), otherwise Gemini Nano's (to confirm), otherwise suggestions or
+ * the warning. Mirrors app/camera.tsx.
  */
 function normalScanOutcome(scan: DebugScan, ai: AiIdentification | null): string[] {
   if (scan.mode === 'menu') return [verdict(scan)];
-  if (scan.matches.length) return [`Opens ${scan.matches[0].name} (ML Kit match; Nano isn't run)`];
+  if (scan.matches.length) return [`Opens ${scan.matches[0].name} (${scan.reader} match; Nano isn't run)`];
+  if (scan.confirm) return [`Asks “Is this ${scan.confirm.name}?” (matched only with WATERec's readings; Nano isn't run)`];
   if (ai?.match) return [`Asks “Is this ${ai.match.name}?” (both Nano readings matched it)`];
   const suggestions = scan.suggestions.length ? scan.suggestions : (ai?.suggestions ?? []);
   if (!suggestions.length) return ['Shows the “not in our gluten-free list” warning'];
@@ -114,7 +118,7 @@ function scanReport(
   aiStatus: AiStatus,
   results: Record<string, VariantResult>,
   outcome: string[],
-  onDevice: OnDeviceState,
+  comparison: Comparison,
 ): string {
   const aiLines =
     aiStatus !== 'available'
@@ -133,8 +137,11 @@ function scanReport(
     `Mode: ${scan.mode}`,
     'Normal scan:',
     ...outcome,
-    `Photo: ${scan.photo.width}x${scan.photo.height} px, ${scan.blocks.length} blocks, ${scan.durationMs} ms`,
+    `Reader: ${scan.reader}`,
+    `Photo: ${scan.photo.width}x${scan.photo.height} px, ${scan.blocks.length} blocks, ${scan.durationMs} ms` +
+      (scan.timings ? ` (${timingText(scan.timings)})` : ''),
     `Matched: ${beerList(scan.matches) || 'nothing'}`,
+    ...(scan.confirm ? [`To confirm (WATERec): ${beerList([scan.confirm])}`] : []),
     ...(scan.suggestions.length ? [`Suggested: ${beerList(scan.suggestions)}`] : []),
     'Expected: ',
     '',
@@ -144,9 +151,8 @@ function scanReport(
     'OCR text:',
     scan.text,
     '',
-    '--- PP-OCRv6 + WATERec (on-device) ---',
-    ...onDeviceLines(onDevice),
-    '',
+    ...(scan.ocrLines ? ['Lines (PP-OCRv6 | WATERec):', ...ocrLineTexts(scan.ocrLines).map((l) => `- ${l}`), ''] : []),
+    ...(comparison ? ['--- ML Kit (comparison) ---', ...comparisonLines(comparison), ''] : []),
     '--- Gemini Nano ---',
     ...aiLines,
   ].join('\n');
@@ -162,7 +168,7 @@ export default function ScanDebugScreen() {
   const [aiStatus, setAiStatus] = useState<AiStatus>('checking');
   const [results, setResults] = useState<Record<string, VariantResult>>({});
   const [beers, setBeers] = useState<Beer[]>([]);
-  const [onDevice, setOnDevice] = useState<OnDeviceState>(null);
+  const [comparison, setComparison] = useState<Comparison>(null);
   const setResult = (id: string, result: VariantResult) => setResults((r) => ({ ...r, [id]: result }));
 
   const runVariant = async (variant: AiVariant, beers: Beer[], download = false) => {
@@ -201,20 +207,21 @@ export default function ScanDebugScreen() {
     }
   };
 
-  // PP-OCRv6 + WATERec on the same photo. Before Nano, so the two don't share the CPU while being timed.
-  const runOnDevice = async () => {
-    if (!scan || !isOcrModelsAvailable) return;
-    setOnDevice({ state: 'running' });
+  // ML Kit on the same photo, when the scan used the on-device reader. Before
+  // Nano, so the two don't share the CPU while being timed.
+  const runComparison = async () => {
+    if (!scan || scan.reader !== 'PP-OCRv6 + WATERec') return;
+    setComparison({ state: 'running' });
     try {
-      setOnDevice({ state: 'done', value: await readLabelOnDevice(scan.photo.uri, await listBeers('all', '')) });
+      setComparison({ state: 'done', scan: await scanPhoto(scan.photo.uri, scan.mode, await listBeers('all', ''), { platformOnly: true }) });
     } catch (e) {
-      setOnDevice({ state: 'error', message: e instanceof Error ? e.message : String(e) });
+      setComparison({ state: 'error', message: e instanceof Error ? e.message : String(e) });
     }
   };
 
   useEffect(() => {
     // The prompts are written for a single label; menus aren't compared yet.
-    if (scan?.mode === 'can') runOnDevice().then(() => runAi(false));
+    if (scan?.mode === 'can') runComparison().then(() => runAi(false));
     else setAiStatus('cansOnly');
   }, []);
 
@@ -226,10 +233,10 @@ export default function ScanDebugScreen() {
     );
   }
 
-  // ML Kit frames are in the photo's pixel coordinates; the photo is drawn scaled to the screen width.
+  // Text frames are in the photo's pixel coordinates; the photo is drawn scaled to the screen width.
   const scale = photoWidth / scan.photo.width;
   const lines = scan.blocks.flatMap((block) => block.lines);
-  const matchedIds = new Set(scan.matches.map((b) => b.id));
+  const matchedIds = new Set([...scan.matches, ...(scan.confirm ? [scan.confirm] : [])].map((b) => b.id));
 
   const largeTextReadings = AI_VARIANTS.map((v) => results[v.id])
     .flatMap((r) => (r?.state === 'done' ? [r.reading] : []));
@@ -263,7 +270,7 @@ export default function ScanDebugScreen() {
         <Text style={styles.title}>Scan debug</Text>
         <Pressable
           style={styles.shareButton}
-          onPress={() => Share.share({ message: scanReport(scan, aiStatus, results, outcome, onDevice) })}
+          onPress={() => Share.share({ message: scanReport(scan, aiStatus, results, outcome, comparison) })}
           accessibilityRole="button"
         >
           <Text style={styles.shareText}>Share report</Text>
@@ -279,47 +286,41 @@ export default function ScanDebugScreen() {
       </View>
 
       <View style={styles.verdict}>
-        <Text style={styles.meta}>ML Kit text recognition</Text>
+        <Text style={styles.meta}>{scan.reader}</Text>
         <Text style={styles.verdictTitle}>{verdict(scan)}</Text>
         <Text style={styles.meta}>
           {scan.mode === 'menu' ? 'Menu' : 'Can or bottle'} · {scan.photo.width}×{scan.photo.height} px ·{' '}
           {scan.blocks.length} blocks · {lines.length} lines ·{' '}
           {scan.text.length} chars · {scan.durationMs} ms
+          {scan.timings ? ` (${timingText(scan.timings)})` : ''}
         </Text>
         {scan.matches.length ? (
           <Pressable onPress={openResult} accessibilityRole="button">
             <Text style={styles.link}>Open result →</Text>
           </Pressable>
         ) : null}
+        {scan.ocrLines ? (
+          <Text selectable style={[styles.code, { marginTop: spacing(2) }]}>
+            {ocrLineTexts(scan.ocrLines).join('\n') || '(no text found)'}
+          </Text>
+        ) : null}
       </View>
 
-      {onDevice ? (
+      {comparison ? (
         <>
-          <Text style={styles.sectionTitle}>PP-OCRv6 + WATERec (on-device)</Text>
+          <Text style={styles.sectionTitle}>ML Kit (comparison)</Text>
           <View style={styles.verdict}>
-            {onDevice.state === 'running' ? <Text style={styles.verdictTitle}>Reading…</Text> : null}
-            {onDevice.state === 'error' ? (
+            {comparison.state === 'running' ? <Text style={styles.verdictTitle}>Reading…</Text> : null}
+            {comparison.state === 'error' ? (
               <>
                 <Text style={styles.verdictTitle}>Failed</Text>
-                <Text selectable style={styles.meta}>{onDevice.message}</Text>
+                <Text selectable style={styles.meta}>{comparison.message}</Text>
               </>
             ) : null}
-            {onDevice.state === 'done' ? (
+            {comparison.state === 'done' ? (
               <>
-                <Text style={styles.verdictTitle}>{verdict(onDevice.value.reading)}</Text>
-                <Text style={styles.meta}>
-                  {onDevice.value.reading.durationMs} ms ·{' '}
-                  {Object.entries(onDevice.value.result.timings).map(([k, v]) => `${k} ${v}`).join(' · ')}
-                </Text>
-                <Text selectable style={[styles.code, { marginTop: spacing(2) }]}>
-                  {onDevice.value.result.lines
-                    .map(
-                      (l) =>
-                        `${l.text} (${l.score.toFixed(2)})` +
-                        (l.waterecText !== null ? `\n  ↳ WATERec: ${l.waterecText} (${(l.waterecScore ?? 0).toFixed(2)})` : ''),
-                    )
-                    .join('\n') || '(no text found)'}
-                </Text>
+                <Text style={styles.verdictTitle}>{verdict(comparison.scan)}</Text>
+                <Text selectable style={[styles.code, { marginTop: spacing(2) }]}>{comparison.scan.text || '(none)'}</Text>
               </>
             ) : null}
           </View>

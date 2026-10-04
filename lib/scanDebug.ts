@@ -23,7 +23,7 @@ try {
 
 /**
  * Scan debug mode: after each photo the camera opens a screen showing what
- * ML Kit read and why beers did or didn't match. Toggled by long-pressing the
+ * was read and why beers did or didn't match. Toggled by long-pressing the
  * shutter, so it's reachable in release builds without cluttering the UI.
  */
 export function setScanDebugEnabled(next: boolean) {

@@ -32,7 +32,7 @@ node tools/merge-beers.mjs candidates.json --dry-run   # add researched beers (d
 
 ## Camera recognition pipeline
 
-`app/camera.tsx` → `lib/ocr.ts` (`scanPhoto`: ML Kit text recognition) → `lib/match.ts`. For a can or bottle with no OCR match, `lib/aiLabel.ts` (`identifyWithAi`) asks Gemini Nano to *transcribe* the label. It never asks the model to identify the beer, because a model will confidently name a look-alike. The matcher decides from the text. A Nano match counts only when both readings (1536 px and 1024 px photo) match the same beer on their own, and even then it is shown as "Is this X?" for the person to confirm. Otherwise the camera shows suggestions from a brewery that was read, flagging name words not seen on the label (most of all a missing "Gluten Free"), or the warning.
+`app/camera.tsx` → `lib/ocr.ts` (`scanPhoto`) → `lib/match.ts`. A can or bottle is read by the on-device models (`modules/ocr-models`, below) where they're available, i.e. Android; a menu, or a can on iOS or if the models fail, by the platform's text recognition (ML Kit, or Apple Vision on iOS). A can matches on PP-OCRv6's text alone; a beer that matches only once WATERec's readings are added is shown as "Is this X?" (`PhotoScan.confirm`). For a can with no match, `lib/aiLabel.ts` (`identifyWithAi`) asks Gemini Nano to *transcribe* the label. It never asks the model to identify the beer, because a model will confidently name a look-alike. The matcher decides from the text. A Nano match counts only when both readings (1536 px and 1024 px photo) match the same beer on their own, and even then it is shown as "Is this X?" for the person to confirm. Otherwise the camera shows suggestions from a brewery that was read, flagging name words not seen on the label (most of all a missing "Gluten Free"), or the warning.
 
 Safety rules in `lib/match.ts`, each added after a real false match:
 - A brewery alone never identifies a beer; breweries also make beers with gluten.
@@ -43,13 +43,13 @@ Safety rules in `lib/match.ts`, each added after a real false match:
 
 `__tests__/realScans.test.ts` holds text from real scans, from both ML Kit and Nano, with the expected beer, or `null` for gluten-containing look-alikes. Any matcher change must keep it passing. Add new reports there, especially failures.
 
-**Scan debug mode:** hold the shutter to toggle it. Each photo then opens `app/scan-debug.tsx`, which shows ML Kit's boxes and text, each Nano reading, every candidate with its rejection reason, what a normal scan would do, and a "Share report" for turning a scan into a test.
+**Scan debug mode:** hold the shutter to toggle it. Each photo then opens `app/scan-debug.tsx`, which shows the reader's boxes and text (with ML Kit's reading alongside, when the on-device reader was used), each Nano reading, every candidate with its rejection reason, what a normal scan would do, and a "Share report" for turning a scan into a test.
 
 Recognition must stay on-device (a product decision): no cloud vision or LLM fallback.
 
 ## On-device OCR models (`modules/ocr-models`)
 
-PP-OCRv6 small (find and read text lines) and WATERec (artistic lettering, for lines PP-OCRv6 reads with low confidence), run with ONNX Runtime in Kotlin (`LabelOcr.kt`, a port of PaddleX's pipeline: 960 px, rotated text boxes read straightened). On the 20-photo bench it gets 15 right against ML Kit's 10, at ~0.5 s per photo. For now it appears only on the scan debug screen and in `glutenless://bench?mode=read`, which reads every photo pushed to the app's files dir (`images/`) and logs to logcat.
+PP-OCRv6 small (find and read text lines) and WATERec (artistic lettering, for lines PP-OCRv6 reads with low confidence), run with ONNX Runtime in Kotlin (`LabelOcr.kt`, a port of PaddleX's pipeline: 960 px, rotated text boxes read straightened). On the 20-photo bench it gets 15 right against ML Kit's 10, at ~0.5 s per photo. Android only for now (iOS would need `LabelOcr.kt` ported to Swift). `glutenless://bench?mode=read` scans every photo pushed to the app's files dir (`images/`) as a can scan would, and logs to logcat.
 
 - The models (~58 MB, shrunk by `tools/ocr-bench/shrink_models.py`: a Latin-only reader, WATERec in 8 bits) are generated, not in git. `install_models.sh` copies them into the module's assets, and `scripts/build-android.sh` refuses to build without them. Files of the same name in the app's external files dir (`onnx/`) take precedence, for testing variants over adb.
 - `tools/ocr-bench` compares readers on label photos through `lib/match.ts` (`bench.py`, then `node tools/ocr-bench/score.mts`). Re-check accuracy there and on the phone after changing models or the pipeline.

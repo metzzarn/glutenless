@@ -118,6 +118,17 @@ export default function CameraScreen() {
         return;
       }
 
+      const otherwiseFromScan = scan.suggestions.length ? pickNotice(scan.suggestions, [scan.text]) : NOT_IN_LIST;
+      if (scan.confirm) {
+        setNotice({
+          title: `Is this ${scan.confirm.name}?`,
+          body: `Read from the label's lettering, which can be misread. Check that your label says “${scan.confirm.name}” before trusting it.`,
+          confirm: scan.confirm,
+          otherwise: otherwiseFromScan,
+        });
+        return;
+      }
+
       // OCR found no beer: on phones with an on-device model, read the label
       // again with it (it reads script lettering OCR can't).
       setDetecting('Reading the label…');

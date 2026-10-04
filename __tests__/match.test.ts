@@ -200,6 +200,15 @@ describe('suggestByBrewery', () => {
     expect(suggested.every((b) => b.brewery === 'BrewDog')).toBe(true);
   });
 
+  it('reads characters OCR commonly mixes up as the intended ones', () => {
+    // Real ML Kit readings: a zero for the O in a split "STONE", and an O for the D in "BREWDOG".
+    expect(suggest('ST0 NE\nARZY\nIPA').map((b) => b.brewery)).toContain('Stone Brewing');
+    expect(suggest('BREWOOG').map((b) => b.brewery)).toContain('BrewDog');
+    expect(matchBeerByText('0AURA DAMRN', beers)?.name).toBe('Daura Damm');
+    // Short words still have to be read exactly, apart from those look-alike characters.
+    expect(matchBeerByText('DAURA DANN', beers)).toBeNull();
+  });
+
   it('lists current beers before discontinued ones', () => {
     const discontinued = suggest('GLUTENBERG').map((b) => b.discontinued);
     expect(discontinued).toEqual([...discontinued].sort((a, b) => Number(a) - Number(b)));

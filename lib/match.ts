@@ -19,6 +19,8 @@ function normalize(s: string): string {
  * beers are named with nothing else ("IPA", "Hazy IPA", "West Coast Pale
  * Ale"), and any brewery's beer of that style prints the same words — a Stone
  * Hazy IPA, which contains gluten, matched Aurochs' gluten-free "Hazy IPA".
+ * Alcohol words are here too: a US label's government warning ("ALCOHOLIC
+ * BEVERAGES") made a Glutenberg IPA can match their "Non-Alcoholic Blonde".
  */
 const STYLE_WORDS = new Set(
   (
@@ -27,7 +29,8 @@ const STYLE_WORDS = new Set(
     'sour gose kolsch helles dunkel dunkles bock doppelbock marzen festbier session hazy juicy new ' +
     'england west coast double triple tripel dubbel quad imperial american english belgian irish german ' +
     'mexican light lite premium classic original craft beer cerveza bier birra biere gluten free ' +
-    'glutenfri glutenfrei sin senza sans reduced removed alcohol alkoholfrei non zero cream extra special ' +
+    'glutenfri glutenfrei sin senza sans reduced removed alcohol alcoholic alkoholfrei alkoholfri alkoholiton ' +
+    'alkoholfritt alcoholvrij alcolica analcolica analcolico na non zero cream extra special ' +
     'bitter mild saison farmhouse fruit sparkling radler shandy honey rice hoppy hop hops unfiltered ' +
     'keller natural bio organic ekologisk and the of with'
   ).split(' '),
@@ -152,22 +155,52 @@ function editDistance(a: string, b: string, max: number): number {
  * needs at least one word read exactly, and a single-word name must be long
  * enough (8+ letters) that a one-letter slip can't plausibly be another word.
  */
+/**
+ * A word with the characters OCR mixes up merged into one form each: a "D"
+ * read as "O" ("BREWOOG"), a zero for an O ("ST0NE"), "1"/"l"/"I", "rn" for
+ * "m". Comparing skeletons treats those misreads as exact reads.
+ */
+function skeleton(word: string): string {
+  return word
+    .replace(/rn/g, 'm')
+    .replace(/vv/g, 'w')
+    .replace(/[0dq]/g, 'o')
+    .replace(/[1i]/g, 'l')
+    .replace(/5/g, 's')
+    .replace(/8/g, 'b')
+    .replace(/2/g, 'z')
+    .replace(/6/g, 'g');
+}
+
+// Skeletons of a reading's words, computed once per reading rather than per beer.
+const skeletonCache = new WeakMap<string[], string[]>();
+function skeletons(words: string[]): string[] {
+  let cached = skeletonCache.get(words);
+  if (!cached) skeletonCache.set(words, (cached = words.map(skeleton)));
+  return cached;
+}
+
 function findWords(ocrWords: string[], needle: string): string | null {
-  const words = needle.split(' ');
+  const words = needle.split(' ').map(skeleton);
+  const ocr = skeletons(ocrWords);
   const single = words.length === 1;
-  if (single && needle.length < 8) return ocrWords.includes(needle) ? needle : null;
+  if (single && needle.length < 8) {
+    const at = ocr.indexOf(words[0]);
+    return at === -1 ? null : ocrWords[at] === needle ? needle : ocrWords[at];
+  }
 
   let nearMiss: string | null = null;
-  for (let i = 0; i + words.length <= ocrWords.length; i++) {
-    const window = ocrWords.slice(i, i + words.length);
-    if (window.every((w, j) => w === words[j])) return needle;
+  for (let i = 0; i + words.length <= ocr.length; i++) {
+    const window = ocr.slice(i, i + words.length);
+    const read = ocrWords.slice(i, i + words.length).join(' ');
+    if (window.every((w, j) => w === words[j])) return read === needle ? needle : read;
     if (nearMiss) continue;
     const anchored = single || window.some((w, j) => w === words[j]);
     const close = window.every((w, j) => {
       const max = single ? 1 : allowedEdits(words[j]);
       return editDistance(w, words[j], max) <= max;
     });
-    if (anchored && close) nearMiss = window.join(' ');
+    if (anchored && close) nearMiss = read;
   }
   return nearMiss;
 }
@@ -187,7 +220,7 @@ function joinSpacedLetters(words: string[]): string[] {
     run = [];
   };
   for (const word of words) {
-    if (word.length <= 4 && /^[a-z]+$/.test(word)) run.push(word);
+    if (word.length <= 4 && /^[a-z0-9]+$/.test(word) && /[a-z]/.test(word)) run.push(word);
     else {
       flush();
       joined.push(word);
@@ -212,12 +245,14 @@ function findInReadings(ocrReadings: string[][], needle: string): string | null 
   // Rejoining can't tell where one spaced-out word ends and the next starts
   // ("D A U R A  D A M M" → "dauradamm"), so also try the name without spaces, exactly.
   const compact = needle.replace(/ /g, '');
-  if (compact !== needle && ocrReadings.at(-1)!.includes(compact)) return compact;
-  // And the other way round: a one-word name read as two ("BREW DOG" for "BrewDog").
-  if (compact === needle && needle.length >= 6) {
+  if (compact !== needle && skeletons(ocrReadings.at(-1)!).includes(skeleton(compact))) return compact;
+  // And the other way round: a one-word name read as two ("BREW DOG" for
+  // "BrewDog", "ST0 NE" for "Stone").
+  if (compact === needle && needle.length >= 5) {
     const words = ocrReadings[0];
+    const target = skeleton(needle);
     for (let i = 0; i + 1 < words.length; i++) {
-      if (words[i] + words[i + 1] === needle) return `${words[i]} ${words[i + 1]}`;
+      if (skeleton(words[i] + words[i + 1]) === target) return `${words[i]} ${words[i + 1]}`;
     }
   }
   return null;
@@ -268,6 +303,23 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
         rejected: "a brewery alone doesn't say which of its beers this is",
       });
       break;
+    }
+  }
+
+  // A longer name from the same brewery that contains a name read, with its
+  // extra words printed elsewhere on the label: "Kukko / PILS" with
+  // "ALKOHOLITON" further down is Kukko Pils Alkoholiton, not Kukko Pils.
+  for (const candidate of [...candidates]) {
+    if (candidate.field !== 'name' || candidate.rejected) continue;
+    const words = candidate.needle.split(' ');
+    for (const beer of beers) {
+      if (beer.brewery !== candidate.beer.brewery || beer.id === candidate.beer.id) continue;
+      const longer = normalize(beer.name).split(' ');
+      if (longer.length <= words.length || !words.every((w) => longer.includes(w))) continue;
+      const extra = longer.filter((w) => !words.includes(w));
+      const found = extra.map((w) => findInReadings(ocrReadings, w));
+      if (!found.every(Boolean)) continue;
+      candidates.push({ beer, field: 'name', needle: longer.join(' '), found: `${candidate.found} … ${found.join(' ')}` });
     }
   }
 

@@ -29,13 +29,29 @@ const scans: [label: string, text: string, expected: string | null][] = [
   ['Peroni Nastro Azzurro, ML Kit', 'AP\nTAL\n8IRA\nPOM\nDAL18 46\nSUPERIORE\nPERONI\nNASTRO\nAZZURRO\nTALIP ANA', null],
   ['Peroni Nastro Azzurro, Nano', 'PERONI\nNASTRO AZZURRO', null],
 
+  [
+    // The back of a Glutenberg IPA can, read by Florence-2: the US government warning's
+    // "ALCOHOLIC BEVERAGES" must not name Glutenberg's "Non-Alcoholic Blonde".
+    'Glutenberg IPA can (back), Florence-2',
+    'gluten fice\nGluten\n6% ALC/Vol\nindia pal\nINGREDIENTS: WATER, MILLET, BUCKWHEET\nHOPS, RICE, CANDI SYRUP, CORN MALTOO\n' +
+      'GOVERNMENT WARNING: (11) ACCORDING TO\nSURGEON GENERAL, WOMEN SHOP, NO. 1\nAL COHOLIC BEVERATH DEFECTS 12% OF THE RISK BEVERAGES IMPAIRS, AND\n' +
+      'Brewed and canned by Brassesseurs Sans Glue\nMontréal, Quebec, Canada\nglutenberg.ca',
+    null,
+  ],
+
   // Gluten-free beers.
   ['Stone Delicious IPA, Nano', 'STONE\nDelicious\nIPA', 'Delicious IPA'],
   ['Peroni Gluten Free, Nano', 'PERONI\nNASTRO AZZURRO\nGLUTEN FREE', 'Peroni Nastro Azzurro Gluten Free'],
   ['Daura Damm, Nano', 'DAURA\nDAMM\n1676\nGLUTEN-FREE', 'Daura Damm'],
   ['BrewDog Vagabond, Nano', 'BREW DOG\nVAGABOND\nDRAWN\nGLUTEN\nFREE', 'Vagabond Pale Ale'],
-  // "BREWOOG" is too far from BrewDog to count, so there's no brewery to go with "VAGABOND".
-  ['BrewDog Vagabond, ML Kit', 'BREWOOG\nVAGABOND\nGLUTENFREE', null],
+  // "ALKOHOLITON" is printed away from "Kukko / PILS"; it's the alcohol-free one.
+  [
+    'Kukko Pils Alkoholiton can, PaddleOCR',
+    'AOHOLFRI\nALKOHOLITON\nALKOHOL\nLAITILAN\nKukko\nPILS\nRONC\n33 cl',
+    'Kukko Pils Alkoholiton',
+  ],
+  // "BREWOOG" reads as BrewDog, since OCR commonly takes a D for an O.
+  ['BrewDog Vagabond, ML Kit', 'BREWOOG\nVAGABOND\nGLUTENFREE', 'Vagabond Pale Ale'],
 ];
 
 describe('real scans', () => {

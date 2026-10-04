@@ -3,6 +3,7 @@
  * through lib/match.ts, against the real beer list.
  *
  *   node tools/ocr-bench/score.mts
+ *   ONLY_WITH=mlkit node tools/ocr-bench/score.mts   # only photos that reader has
  *
  * A photo's expected beer comes from its file name, before any " - "
  * ("Stone Delicious IPA - bottle.jpg" → a beer whose brewery and name are in
@@ -23,9 +24,12 @@ const beers: Beer[] = JSON.parse(readFileSync(join(here, '../../data/beers.json'
   favorite: false,
   personalNote: '',
 }));
-const results: Record<string, Record<string, { text: string; ms: number }>> = JSON.parse(
+const allResults: Record<string, Record<string, { text: string; ms: number }>> = JSON.parse(
   readFileSync(join(here, 'results.json'), 'utf8'),
 );
+// Readings from the phone (ML Kit, Nano) cover fewer photos; compare every reader on just those.
+const onlyWith = process.env.ONLY_WITH;
+const results = Object.fromEntries(Object.entries(allResults).filter(([, byReader]) => !onlyWith || onlyWith in byReader));
 
 /**
  * Our beers the photo shows: every word of a name appears in the file name,

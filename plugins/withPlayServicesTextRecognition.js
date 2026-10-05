@@ -4,8 +4,8 @@ const { AndroidConfig, withAndroidManifest, withAppBuildGradle } = require('expo
  * Uses Google Play services' ML Kit text recognition instead of the bundled
  * one that @react-native-ml-kit/text-recognition depends on: same API, but
  * the model (an 11 MB native library) is downloaded once by Play services
- * and shared between apps, rather than shipped in the APK. ML Kit is still
- * used for menus, and for cans when the on-device reader fails.
+ * and shared between apps, rather than shipped in the APK. ML Kit reads
+ * photos when the on-device reader fails, and in scan debug's comparison.
  *
  * The manifest entry asks Play services to download the Latin model when the
  * app is installed; until it has, recognition fails.

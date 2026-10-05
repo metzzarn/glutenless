@@ -53,9 +53,19 @@ function distinctiveWords(name: string): string[] {
  * A name made only of style words ("Hazy IPA", "Light Lager") identifies no
  * particular beer, so it only counts alongside the beer's own brewery.
  */
-function isGenericName(name: string): boolean {
+export function isGenericName(name: string): boolean {
   return name.split(' ').every((word) => STYLE_WORDS.has(word));
 }
+
+/**
+ * Short names menus print for a beer, checked by hand: each must name only
+ * that beer, so that no other beer, with or without gluten, is printed the
+ * same way. Matched as whole words, like a full name.
+ */
+const MENU_SHORT_NAMES: Record<string, string[]> = {
+  // Peroni's only gluten-free beer; menus list it as "Peroni Gluten Free".
+  'Peroni Nastro Azzurro Gluten Free': ['peroni gluten free'],
+};
 
 /** Style words that say nothing about which beer: a menu line's "Craft Beer" doesn't rule out a name without them. */
 const NEUTRAL_WORDS = new Set(['beer', 'bier', 'birra', 'biere', 'cerveza', 'craft', 'the', 'and', 'of', 'with']);
@@ -521,10 +531,11 @@ export function isGlutenClaimWord(word: string): boolean {
  *   Vagabond Pale Ale). Names read in full come first, the fullest winning
  *   ("Kukko Pils Alkoholiton" over "Kukko Pils"); otherwise the line must
  *   fit only one of the brewery's beers.
- * - Its brewery and a gluten-free claim on one line, when exactly one of the
- *   brewery's beers claiming it fits the line's other words: "Peroni Gluten
- *   Free" is Peroni Nastro Azzurro Gluten Free, "Omnipollo Gluten Free,
- *   Pilsner" is Stellaris (Pilsner), not Luz (Mexican Lager).
+ * - A short name from MENU_SHORT_NAMES ("Peroni Gluten Free").
+ *
+ * A brewery with a gluten-free claim alone isn't enough: "Omnipollo Gluten
+ * Free, Pilsner" doesn't name Stellaris, Omnipollo's gluten-free pilsner in
+ * our list, and might be another beer.
  */
 export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[] {
   const words = vocabulary(beers);
@@ -543,7 +554,13 @@ export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[
 
   for (const beer of beers) {
     const name = normalize(beer.name);
-    if (!name || !textReadings.some((r) => ` ${r.join(' ')} `.includes(` ${name} `))) continue;
+    if (!name) continue;
+    const printed = [name, ...(MENU_SHORT_NAMES[beer.name] ?? [])].find((n) => textReadings.some((r) => ` ${r.join(' ')} `.includes(` ${n} `)));
+    if (!printed) continue;
+    if (printed !== name) {
+      add({ beer, field: 'name', needle: name, found: printed });
+      continue;
+    }
     let rejected: string | undefined;
     if (isGenericName(name)) {
       const token = breweryToken(beer.brewery);
@@ -594,28 +611,6 @@ export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[
           rejected: !complete.length && fits.length > 1 ? `several ${brewery} beers fit the line` : undefined,
         });
       }
-      if (fits.length) continue;
-
-      // Brewery + a gluten-free claim, fitting one of its beers that claims it.
-      if (![...GLUTEN_CLAIM_WORDS].some((w) => !breweryWords.has(w) && has(reading, w))) continue;
-      const claiming = breweryBeers.filter((beer) => {
-        const claimWords = own(beer).filter((w) => GLUTEN_CLAIM_WORDS.has(w));
-        return claimWords.length > 0 && claimWords.every((w) => has(reading, w)) && styleFits(beer);
-      });
-      const narrowed =
-        claiming.length > 1
-          ? claiming.filter((beer) => own(beer).some((w) => !GLUTEN_CLAIM_WORDS.has(w) && has(reading, w)))
-          : claiming;
-      if (!narrowed.length) continue;
-      const beer = narrowed[0];
-      if (found.has(beer.id)) continue;
-      add({
-        beer,
-        field: 'name',
-        needle: `${key} … ${own(beer).filter((w) => GLUTEN_CLAIM_WORDS.has(w)).join(' ')}`,
-        found: lines[i],
-        rejected: narrowed.length > 1 ? `several ${brewery} gluten-free beers fit the line` : undefined,
-      });
     }
   });
   return candidates;

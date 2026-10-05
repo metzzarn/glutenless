@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeOcrText } from '../../lib/match.ts';
+import { isGenericName, normalizeOcrText } from '../../lib/match.ts';
 
 export type Beer = { id: number; name: string; brewery: string; [key: string]: unknown };
 
@@ -20,7 +20,9 @@ export const beers: Beer[] = JSON.parse(readFileSync(join(here, '../../data/beer
  * Our beers the photo shows: every word of a name appears in the file name,
  * with a word of its brewery unless the name is three words or more ("Estrella
  * Galicia Gluten Free" is brewed by Hijos de Rivera; two-word names like
- * "Pale Ale" or "Gluten Free" would turn up in unrelated file names).
+ * "Pale Ale" or "Gluten Free" would turn up in unrelated file names), and not
+ * only style words (Hope's "Gluten Free Pilsner" isn't "Omnipollo Gluten-Free
+ * Pilsner").
  */
 export function expectedBeers(file: string): Beer[] {
   return file
@@ -38,7 +40,7 @@ function expectedBeer(part: string): Beer | null {
   const fits = beers.filter(
     (b) =>
       normalizeOcrText(b.name).split(' ').every((w) => words.has(w)) &&
-      (normalizeOcrText(b.name).split(' ').length >= 3 || normalizeOcrText(b.brewery).split(' ').some((w) => words.has(w))),
+      ((normalizeOcrText(b.name).split(' ').length >= 3 && !isGenericName(normalizeOcrText(b.name))) || normalizeOcrText(b.brewery).split(' ').some((w) => words.has(w))),
   );
   // The longest name, so "Delicious IPA" wins over a plain "IPA".
   return fits.sort((a, b) => b.name.length - a.name.length)[0] ?? null;

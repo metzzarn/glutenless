@@ -314,11 +314,14 @@ describe('menu entries, from real menus', () => {
     expect(menu('Daura Damm .... 8')).toEqual(['Daura Damm']);
   });
 
-  it('matches a brewery with a gluten-free claim when one of its gluten-free beers fits', () => {
+  it('does not guess a beer from its brewery and a gluten-free claim', () => {
+    // Omnipollo's gluten-free pilsner in our list is Stellaris, but the menu doesn't name it.
+    expect(menu('Carlsberg Hof, Lager', 'Omnipollo Zodiak, IPA', 'Omnipollo Gluten Free, Pilsner')).toEqual([]);
+  });
+
+  it('matches the short names menus print, listed by hand', () => {
     expect(menu('Peroni 5% ve', 'Peroni Gluten Free 5% ve', 'Corona Extra 4.5% ve')).toEqual(['Peroni Nastro Azzurro Gluten Free']);
-    expect(menu('Carlsberg Hof, Lager', 'Omnipollo Zodiak, IPA', 'Omnipollo Gluten Free, Pilsner')).toEqual(['Stellaris Gluten-Free Pilsner']);
-    // Omnipollo's gluten-free beers in our list are a pilsner and a Mexican lager.
-    expect(menu('Omnipollo Gluten Free IPA')).toEqual([]);
+    expect(menu('PERONI GLUTEN FREE (5.1% ABV) 4.00 (330ml)')).toEqual(['Peroni Nastro Azzurro Gluten Free']);
     // The regular Peroni and its alcohol-free one aren't gluten-free.
     expect(menu('PERONI (5.1% ABV) 6.80 (620ml)', 'Peroni 0.0% 330ml ve')).toEqual([]);
   });

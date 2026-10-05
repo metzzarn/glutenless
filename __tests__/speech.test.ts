@@ -44,14 +44,35 @@ describe('useVoiceSearch', () => {
     );
   });
 
-  it("downloads a language the phone doesn't have yet instead of listening", async () => {
-    mockSpeech.getSupportedLocales.mockResolvedValue({ locales: ['en-US', 'sv-SE'], installedLocales: ['en-US'] });
-    const { result } = await renderHook(() => useVoiceSearch(jest.fn()));
-    await act(async () => {
-      expect(await result.current.start(hints, 'sv-SE')).toBe('downloading');
+  describe("a language the phone doesn't have yet", () => {
+    beforeEach(() => mockSpeech.getSupportedLocales.mockResolvedValue({ locales: ['en-US', 'sv-SE'], installedLocales: ['en-US'] }));
+    const startSwedish = async () => {
+      const { result } = await renderHook(() => useVoiceSearch(jest.fn()));
+      let status = '';
+      await act(async () => {
+        status = await result.current.start(hints, 'sv-SE');
+      });
+      expect(mockSpeech.androidTriggerOfflineModelDownload).toHaveBeenCalledWith({ locale: 'sv-SE' });
+      return status;
+    };
+
+    it('listens once Android has downloaded it', async () => {
+      mockSpeech.androidTriggerOfflineModelDownload.mockResolvedValue({ status: 'download_success' });
+      expect(await startSwedish()).toBe('listening');
+      expect(mockSpeech.start).toHaveBeenCalledWith(expect.objectContaining({ lang: 'sv-SE' }));
     });
-    expect(mockSpeech.androidTriggerOfflineModelDownload).toHaveBeenCalledWith({ locale: 'sv-SE' });
-    expect(mockSpeech.start).not.toHaveBeenCalled();
+
+    it('says it is getting ready when the download is scheduled', async () => {
+      mockSpeech.androidTriggerOfflineModelDownload.mockResolvedValue({ status: 'download_scheduled' });
+      expect(await startSwedish()).toBe('downloading');
+      expect(mockSpeech.start).not.toHaveBeenCalled();
+    });
+
+    it('says nothing when the person cancels the download', async () => {
+      mockSpeech.androidTriggerOfflineModelDownload.mockRejectedValue(new Error('error_7'));
+      expect(await startSwedish()).toBe('not-downloaded');
+      expect(mockSpeech.start).not.toHaveBeenCalled();
+    });
   });
 
   it("reports a language the phone can't recognize offline", async () => {

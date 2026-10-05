@@ -91,16 +91,23 @@ export default function HomeScreen() {
   const otherLanguage = VOICE_LANGUAGES.find((l) => l.locale !== language) ?? VOICE_LANGUAGES[0];
 
   const listen = useCallback(
-    async (locale?: string) => {
-      const status = await start(voiceHints, locale);
-      const name = languageName(locale ?? language);
-      if (status === 'downloading') {
-        Alert.alert('Getting voice search ready', `Your phone is downloading ${name} speech recognition, which works offline. Try again in a minute.`);
+    async (locale?: string, fallback = true) => {
+      const tried = locale ?? language;
+      const status = await start(voiceHints, tried);
+      const name = languageName(tried);
+      if (status === 'not-downloaded' && fallback) {
+        // The download was declined: back to the other language, so the
+        // microphone doesn't keep asking for one the person doesn't want.
+        const other = VOICE_LANGUAGES.find((l) => l.locale !== tried)!.locale;
+        setLanguage(other);
+        await listen(other, false);
+      } else if (status === 'downloading') {
+        Alert.alert('Getting voice search ready', `Your phone will download ${name} speech recognition, which then works offline (it may wait for Wi-Fi). Try again once it's done.`);
       } else if (status === 'unavailable') {
         Alert.alert('Voice search unavailable', `This phone can't recognize ${name} speech offline. You can type the name instead.`);
       }
     },
-    [start, voiceHints, language],
+    [start, voiceHints, language, setLanguage],
   );
 
   const openMic = useCallback(() => listen(), [listen]);

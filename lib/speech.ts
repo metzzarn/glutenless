@@ -43,8 +43,13 @@ export function installedLocaleFor(locale: string, installed: string[]): string 
   return same === -1 ? null : installed[same];
 }
 
-/** Why listening didn't start, or that it did. */
-export type VoiceStart = 'listening' | 'no-permission' | 'downloading' | 'unavailable';
+/**
+ * Why listening didn't start, or that it did. `downloading`: the language is
+ * being fetched for later; `not-downloaded`: the person declined Android's
+ * download (or it failed, or Android 13 showed its own dialog), which needs
+ * no message from the app.
+ */
+export type VoiceStart = 'listening' | 'no-permission' | 'downloading' | 'not-downloaded' | 'unavailable';
 
 export function useVoiceSearch(onFinalResult: (transcripts: string[]) => void) {
   const [listening, setListening] = useState(false);
@@ -81,12 +86,14 @@ export function useVoiceSearch(onFinalResult: (transcripts: string[]) => void) {
         });
         const installed = installedLocaleFor(locale, installedLocales);
         if (!installed) {
-          // Not on the phone yet: ask Android to fetch it, for next time.
+          // Not on the phone yet: Android asks the person to download it.
           if (!installedLocaleFor(locale, locales)) return 'unavailable';
-          await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({ locale }).catch(() => undefined);
-          return 'downloading';
+          const download = await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({ locale }).catch(() => null);
+          if (download?.status === 'download_scheduled') return 'downloading';
+          if (download?.status !== 'download_success') return 'not-downloaded';
+        } else {
+          lang = installed;
         }
-        lang = installed;
       } else if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
         return 'unavailable';
       }

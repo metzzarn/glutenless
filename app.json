@@ -62,6 +62,7 @@
       ],
       "./modules/label-reader/app.plugin.js",
       "./plugins/withPlayServicesTextRecognition.js",
+      "./plugins/withLatestIntent.js",
       [
         "expo-build-properties",
         {

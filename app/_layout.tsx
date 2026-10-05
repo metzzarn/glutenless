@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { initDb } from '../lib/db';
+import { useLinkFromStartup } from '../lib/startupLink';
 import { useColors, useStyles, type Palette } from '../lib/theme';
 import { loadThemePreference } from '../lib/themePreference';
 
@@ -30,6 +31,7 @@ export default function RootLayout() {
   const [dbReady, setDbReady] = useState(false);
   const colors = useColors();
   const styles = useStyles(makeStyles);
+  useLinkFromStartup();
 
   useEffect(() => {
     initDb().then(() => setDbReady(true));

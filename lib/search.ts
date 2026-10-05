@@ -108,3 +108,8 @@ export function searchBeers(beers: Beer[], query: string): Beer[] {
   fuzzy.sort((a, b) => a.typos - b.typos);
   return [...exact, ...fuzzy.map((f) => f.beer)];
 }
+
+/** A brewery as a list search, without its parent company in brackets: "Mongozo (Brouwerij Huyghe)" → "Mongozo". */
+export function breweryQuery(brewery: string): string {
+  return brewery.replace(/\s*\(.*?\)/g, '').trim();
+}

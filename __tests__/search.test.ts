@@ -1,5 +1,6 @@
 import type { Beer } from '../lib/db';
-import { normalizeForSearch, searchBeers } from '../lib/search';
+import { breweryQuery, normalizeForSearch, searchBeers } from '../lib/search';
+import beersSeed from '../data/beers.json';
 
 const beer = (id: number, over: Partial<Beer>) =>
   ({ id, name: '', brewery: '', style: '', country: '', personalNote: '', ...over }) as Beer;
@@ -74,5 +75,25 @@ describe('searchBeers', () => {
   it('ranks exact matches before typo matches', () => {
     const list = [beer(1, { name: 'Pale Lager' }), beer(2, { name: 'Pale Larger' })];
     expect(searchBeers(list, 'larger').map((b) => b.id)).toEqual([2, 1]);
+  });
+});
+
+describe('breweryQuery', () => {
+  it('drops the parent company in brackets', () => {
+    expect(breweryQuery('Mongozo (Brouwerij Huyghe)')).toBe('Mongozo');
+    expect(breweryQuery('Glutenberg (Brasseurs Sans Gluten)')).toBe('Glutenberg');
+    expect(breweryQuery('BrewDog')).toBe('BrewDog');
+  });
+});
+
+describe('searching for a brewery tapped on a beer page', () => {
+  const all = (beersSeed as unknown as Beer[]).map((b) => ({ ...b, favorite: false, personalNote: '' }));
+
+  it("finds every one of the brewery's beers, for every brewery in the list", () => {
+    for (const brewery of new Set(all.map((b) => b.brewery))) {
+      const found = new Set(searchBeers(all, breweryQuery(brewery)).map((b) => b.id));
+      const missing = all.filter((b) => b.brewery === brewery && !found.has(b.id)).map((b) => b.name);
+      expect({ brewery, missing }).toEqual({ brewery, missing: [] });
+    }
   });
 });

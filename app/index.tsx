@@ -1,6 +1,6 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Image, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BeerRow } from '../components/BeerRow';
 import { CameraSheet } from '../components/CameraSheet';
@@ -10,7 +10,8 @@ import { SearchBar } from '../components/SearchBar';
 import { SyncPill, type SyncStatus } from '../components/SyncPill';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { filterBeers, listBeers, toggleFavorite, type Beer } from '../lib/db';
-import { useVoiceSearch } from '../lib/speech';
+import { useVoiceSearch, VOICE_LANGUAGES } from '../lib/speech';
+import { queryFromSpeech } from '../lib/voiceQuery';
 import { countLabel, freshnessLabel } from '../lib/labels';
 import { getLastSync, syncFromServer, type LastSync } from '../lib/sync';
 import type { FilterKey } from '../lib/status';
@@ -22,6 +23,11 @@ export default function HomeScreen() {
   const styles = useStyles(makeStyles);
 
   const [query, setQuery] = useState('');
+  // A search opened from elsewhere, such as a brewery tapped on a beer's page.
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  useEffect(() => {
+    if (q) setQuery(q);
+  }, [q]);
   const [filter, setFilter] = useState<FilterKey>('all');
   // null until the first load finishes, so the empty-list message can't flash on launch.
   const [allBeers, setAllBeers] = useState<Beer[] | null>(null);
@@ -72,13 +78,40 @@ export default function HomeScreen() {
     if (failedTimerRef.current) clearTimeout(failedTimerRef.current);
   }, []);
 
-  const { listening, start, stop } = useVoiceSearch((transcript) => {
-    setQuery(transcript);
+  const { listening, language, setLanguage, start, stop } = useVoiceSearch((transcripts) => {
+    setQuery(queryFromSpeech(transcripts, allBeers ?? []));
   });
 
-  const openMic = useCallback(async () => {
-    await start();
-  }, [start]);
+  // Our beer and brewery names, for the recognizer to expect.
+  const voiceHints = useMemo(
+    () => [...new Set((allBeers ?? []).flatMap((b) => [b.name, b.brewery.replace(/\s*\(.*?\)/g, '')]))],
+    [allBeers],
+  );
+  const languageName = (locale: string) => VOICE_LANGUAGES.find((l) => l.locale === locale)?.name ?? locale;
+  const otherLanguage = VOICE_LANGUAGES.find((l) => l.locale !== language) ?? VOICE_LANGUAGES[0];
+
+  const listen = useCallback(
+    async (locale?: string) => {
+      const status = await start(voiceHints, locale);
+      const name = languageName(locale ?? language);
+      if (status === 'downloading') {
+        Alert.alert('Getting voice search ready', `Your phone is downloading ${name} speech recognition, which works offline. Try again in a minute.`);
+      } else if (status === 'unavailable') {
+        Alert.alert('Voice search unavailable', `This phone can't recognize ${name} speech offline. You can type the name instead.`);
+      }
+    },
+    [start, voiceHints, language],
+  );
+
+  const openMic = useCallback(() => listen(), [listen]);
+
+  // Switching language restarts listening in the other one.
+  const switchLanguage = useCallback(() => {
+    const next = otherLanguage.locale;
+    setLanguage(next);
+    stop();
+    setTimeout(() => listen(next), 300);
+  }, [otherLanguage, setLanguage, stop, listen]);
 
   const openBeer = useCallback(
     (id: number) => router.push({ pathname: '/beer/[id]', params: { id: String(id) } }),
@@ -169,7 +202,13 @@ export default function HomeScreen() {
         onScanCan={() => startScan('can')}
         onScanMenu={() => startScan('menu')}
       />
-      <ListeningOverlay visible={listening} onCancel={stop} />
+      <ListeningOverlay
+        visible={listening}
+        onCancel={stop}
+        language={languageName(language)}
+        otherLanguage={otherLanguage.name}
+        onSwitchLanguage={switchLanguage}
+      />
     </View>
   );
 }

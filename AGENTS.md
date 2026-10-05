@@ -52,6 +52,10 @@ A menu (`findMenuCandidates`) can match several beers, and other breweries on it
 
 Recognition must stay on-device (a product decision): no cloud vision or LLM fallback.
 
+## Voice search (`lib/speech.ts`, `lib/voiceQuery.ts`)
+
+On-device only, like label reading: Android's (Google's `com.google.android.as`) or iOS's offline recognizer, never a server. It listens in a language the person picks in the listening overlay (English or Swedish, remembered; a missing language is downloaded through Android), is given every beer and brewery name as words to expect (`contextualStrings`), and returns up to five candidate transcripts. `queryFromSpeech` turns them into the search: number words as digits ("nittionio" → 99, Swedish and English), words that sound like one of our names replaced by it ("rodaness" → Rådanäs, "alpine glow" → Alpenglow, via `soundKey`), and the candidate that finds beers and fits our names best chosen. It only fills the search box, so a wrong guess shows as a visible search, not an answer.
+
 ## On-device OCR models (`modules/ocr-models`)
 
 PP-OCRv6 small (find and read text lines) and WATERec (artistic lettering, for lines PP-OCRv6 reads with low confidence), run with a minimal ONNX Runtime in Kotlin (`LabelOcr.kt`, a port of PaddleX's pipeline: 960 px, rotated text boxes read straightened). On the 20-photo bench it gets 15 right against ML Kit's 10, at ~0.5 s per photo. Android only for now (iOS would need `LabelOcr.kt` ported to Swift). `glutenless://bench` scans every photo pushed to the app's files dir (`images/`) as a can scan would (`?reader=platform`: with ML Kit), and logs to logcat. `?set=menus` reads the photos in `menus/` with each menu reader instead; `tools/ocr-bench/images/menus/` has 25 menus for it (5 in Swedish), drawn by `tools/ocr-bench/make_menus.py` and made to look photographed, with gluten-free beers among look-alikes that contain gluten (commands in its `SOURCES.md`), and `tools/ocr-bench/score_menus.mts` scores the readings with the menu matcher (the app finds 36 of the 37 listed beers, none wrong). The can and bottle photos are in `tools/ocr-bench/images/beers/` (not in git).

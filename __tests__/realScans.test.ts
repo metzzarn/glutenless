@@ -29,6 +29,23 @@ const scans: [label: string, text: string, expected: string | null][] = [
   ['Peroni Nastro Azzurro, ML Kit', 'AP\nTAL\n8IRA\nPOM\nDAL18 46\nSUPERIORE\nPERONI\nNASTRO\nAZZURRO\nTALIP ANA', null],
   ['Peroni Nastro Azzurro, Nano', 'PERONI\nNASTRO AZZURRO', null],
 
+  // Look-alikes the brewers don't label gluten-free, beside gluten-free beers of
+  // theirs in our list (made up from the brewers' product pages).
+  ['Williams Bros Juicy Joker, made up', 'WILLIAMS BROS\nBREWING CO\nJUICY JOKER\nNEW ENGLAND IPA', null],
+  ['Williams Bros Caesar AF, made up', 'WILLIAMS BROS\nCAESAR AF\nALC-FREE PALE ALE', null],
+  ['Siren Illuminati, made up', 'SIREN\nCRAFT BREW\nILLUMINATI\nIPA', null],
+  ["St Peter's Cream Stout, made up", "ST PETER'S\nBREWERY\nCREAM STOUT\nSUFFOLK", null],
+  ['Omnipollo Luz Mexican Lager, made up', 'OMNIPOLLO\nLUZ\nMEXICAN LAGER', null],
+  ['Mont Blanc La Blanche, made up', 'BRASSERIE DU MONT BLANC\nLA BLANCHE\nBIÈRE BLANCHE', null],
+  ['Mont Blanc Sylvanus, made up', 'MONT BLANC\nSYLVANUS\nBIÈRE BIO', null],
+  ['Pietra Corsican IPA, made up', 'PIETRA\nCORSICAN\nIPA', null],
+  ['Pietra Summer Session IPA, made up', 'PIETRA\nSUMMER\nSESSION IPA', null],
+  ['Rebellion IPA, made up', 'REBELLION\nIPA\nMARLOW', null],
+  // The brewery makes gluten-free beers and #DefinitelyNotGlutenFree ones.
+  ['Departed Soles IPA, made up', 'DEPARTED SOLES\nBREWING CO\nIPA\nJERSEY CITY', null],
+  // To Øl only claims "very low content of gluten" (up to 100 ppm in the EU).
+  ['To Øl Snublejuice, made up', 'TO ØL\nSNUBLEJUICE\nSESSION IPA', null],
+
   [
     // The back of a Glutenberg IPA can, read by Florence-2: the US government warning's
     // "ALCOHOLIC BEVERAGES" must not name Glutenberg's "Non-Alcoholic Blonde".

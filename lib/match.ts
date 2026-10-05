@@ -14,6 +14,8 @@ function normalize(s: string): string {
     .trim();
 }
 
+const ARTICLES = ['la', 'le', 'les', 'el', 'il', 'lo', 'der', 'die', 'das'];
+
 /**
  * Words that describe a beer's style rather than name it. Many gluten-free
  * beers are named with nothing else ("IPA", "Hazy IPA", "West Coast Pale
@@ -21,9 +23,12 @@ function normalize(s: string): string {
  * Hazy IPA, which contains gluten, matched Aurochs' gluten-free "Hazy IPA".
  * Alcohol words are here too: a US label's government warning ("ALCOHOLIC
  * BEVERAGES") made a Glutenberg IPA can match their "Non-Alcoholic Blonde".
+ * Articles are here too: with "Mont Blanc" read, "La" alone named Mont
+ * Blanc's gluten-free "La Blonde" on a can of their "La Blanche".
  */
-const STYLE_WORDS = new Set(
-  (
+const STYLE_WORDS = new Set([
+  ...ARTICLES,
+  ...(
     'ipa ipl dipa neipa apa esb india pale ale ales lager lagers pils pilsner pilsener stout porter ' +
     'amber blonde blond golden gold red brown dark black white wheat weiss weizen witbier wit hefeweizen ' +
     'sour gose kolsch helles dunkel dunkles bock doppelbock marzen festbier session hazy juicy new ' +
@@ -35,7 +40,7 @@ const STYLE_WORDS = new Set(
     'bitter mild saison farmhouse fruit sparkling radler shandy honey rice hoppy hop hops unfiltered ' +
     'keller natural bio organic ekologisk and the of with'
   ).split(' '),
-);
+]);
 
 /** Words that claim a beer is gluten-free or gluten-reduced, in the languages of our list. */
 const GLUTEN_CLAIM_WORDS = new Set(['gluten', 'free', 'glutenfri', 'glutenfrei', 'sin', 'senza', 'sans', 'gf', 'reduced', 'removed']);
@@ -69,7 +74,26 @@ const MENU_SHORT_NAMES: Record<string, string[]> = {
 };
 
 /** Style words that say nothing about which beer: a menu line's "Craft Beer" doesn't rule out a name without them. */
-const NEUTRAL_WORDS = new Set(['beer', 'bier', 'birra', 'biere', 'cerveza', 'craft', 'the', 'and', 'of', 'with']);
+const NEUTRAL_WORDS = new Set([
+  'beer', 'bier', 'birra', 'biere', 'cerveza', 'craft', 'the', 'and', 'of', 'with',
+  ...ARTICLES,
+]);
+
+/**
+ * Names of beers that contain gluten, from breweries in our list, which hold
+ * every distinctive word of one of their gluten-free beers: Williams Bros'
+ * "Juicy Joker" read as Joker IPA, since "juicy" is a style word. A label
+ * printing one never matches, and on a menu its words don't name our beer.
+ * Checked against the brewers' own pages.
+ */
+const GLUTEN_LOOKALIKES = ['juicy joker', 'caesar af'];
+
+/** A reading's words as one string, with any look-alike name in it blanked out. */
+function withoutLookalikes(words: string[]): string {
+  let text = ` ${words.join(' ')} `;
+  for (const name of GLUTEN_LOOKALIKES) text = text.split(` ${name} `).join(' | ');
+  return text;
+}
 
 const BREWERY_STOP_WORDS = new Set([
   'brewing', 'beer', 'beers', 'brewery', 'breweries', 'co', 'company', 'the', 'craft',
@@ -268,7 +292,8 @@ const vocabularyCache = new WeakMap<Beer[], Set<string>>();
 function vocabulary(beers: Beer[]): Set<string> {
   let words = vocabularyCache.get(beers);
   if (!words) {
-    words = new Set(STYLE_WORDS);
+    // Not the articles: two-letter pieces like "il" let "available" split into words.
+    words = new Set([...STYLE_WORDS].filter((w) => !ARTICLES.includes(w)));
     for (const beer of beers) {
       for (const w of normalize(`${beer.name} ${beer.brewery}`).split(' ')) if (w.length >= 2) words.add(w);
     }
@@ -474,6 +499,14 @@ export function findCanCandidates(text: string, beers: Beer[]): MatchCandidate[]
       candidate.rejected = `the label shows another brewery (${[...breweriesRead].join(', ')})`;
     }
   }
+
+  // A label naming a beer that contains gluten is that beer.
+  const lookalike = GLUTEN_LOOKALIKES.find((name) => findInReadings(ocrReadings, name));
+  for (const candidate of candidates) {
+    if (lookalike && candidate.field === 'name' && !candidate.rejected) {
+      candidate.rejected = `the label names "${lookalike}", which contains gluten`;
+    }
+  }
   return candidates;
 }
 
@@ -579,7 +612,7 @@ export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[
     const name = normalize(beer.name);
     if (!name) continue;
     const printed = [name, ...(MENU_SHORT_NAMES[beer.name] ?? [])].find((n) =>
-      blockReadings.some((block) => block.some((r) => ` ${r.join(' ')} `.includes(` ${n} `))),
+      blockReadings.some((block) => block.some((r) => withoutLookalikes(r).includes(` ${n} `))),
     );
     if (!printed) continue;
     if (printed !== name) {

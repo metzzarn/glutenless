@@ -1,0 +1,98 @@
+diff --git a/openrec/modeling/decoders/na_ar_decoder.py b/openrec/modeling/decoders/na_ar_decoder.py
+index 0c1e933..d01c1b7 100644
+--- a/openrec/modeling/decoders/na_ar_decoder.py
++++ b/openrec/modeling/decoders/na_ar_decoder.py
+@@ -92,7 +92,7 @@ class NaARDecoder(nn.Module):
+         tgt = self.embedding(tgt)
+         tgt = self.positional_encoding(tgt)
+         tgt_mask = self.generate_square_subsequent_mask(
+-            tgt.shape[1], device=src.get_device())
++            tgt.shape[1], device=src.device)
+ 
+         memory = src  # B N C
+         output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_key_padding_mask=memory_key_padding_mask)
+@@ -126,7 +126,7 @@ class NaARDecoder(nn.Module):
+         dec_seq = torch.full((bs, self.max_len + 1),
+                              self.ignore_index,
+                              dtype=torch.int64,
+-                             device=src.get_device())
++                             device=src.device)
+         dec_seq[:, 0] = self.bos
+         logits = []
+ 
+@@ -135,7 +135,7 @@ class NaARDecoder(nn.Module):
+                 dec_seq[:, :len_dec_seq + 1])  # N dim 26+10 # </s>  012 a
+             dec_seq_embed = self.positional_encoding(dec_seq_embed)
+             tgt_mask = self.generate_square_subsequent_mask(
+-                dec_seq_embed.shape[1], src.get_device())
++                dec_seq_embed.shape[1], src.device)
+             tgt = dec_seq_embed  # bs, 3, dim #bos, a, b, c, ... eos
+             tgt = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_key_padding_mask=memory_key_padding_mask)
+             dec_output = tgt
+diff --git a/openrec/modeling/encoders/navit_rope.py b/openrec/modeling/encoders/navit_rope.py
+index 3c858ee..9afd84b 100644
+--- a/openrec/modeling/encoders/navit_rope.py
++++ b/openrec/modeling/encoders/navit_rope.py
+@@ -250,18 +250,21 @@ def compute_axial_cis(dim: int, end_x: int, end_y: int, theta: float = 100.0):
+     t_x, t_y = init_t_xy(end_x, end_y)
+     freqs_x = torch.outer(t_x, freqs_x)
+     freqs_y = torch.outer(t_y, freqs_y)
+-    freqs_cis_x = torch.polar(torch.ones_like(freqs_x), freqs_x)
+-    freqs_cis_y = torch.polar(torch.ones_like(freqs_y), freqs_y)
+-    return torch.cat([freqs_cis_x, freqs_cis_y], dim=-1)
++    # Glutenless: rotation angles instead of torch.polar's complex numbers, which
++    # ONNX can't export. apply_rotary_emb does the same rotation with cos/sin.
++    return torch.cat([freqs_x, freqs_y], dim=-1)
+ 
+ 
+ def apply_rotary_emb(xq: torch.Tensor, xk: torch.Tensor, freqs_cis: torch.Tensor):
+-    xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
+-    xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
+-    freqs_cis = freqs_cis.unsqueeze(1)
+-    xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
+-    xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+-    return xq_out.type_as(xq).to(xq.device), xk_out.type_as(xk).to(xk.device)
++    angles = freqs_cis.unsqueeze(1)
++    cos, sin = angles.cos(), angles.sin()
++
++    def rotate(x):
++        pairs = x.float().reshape(*x.shape[:-1], -1, 2)
++        a, b = pairs[..., 0], pairs[..., 1]
++        return torch.stack([a * cos - b * sin, a * sin + b * cos], dim=-1).flatten(3)
++
++    return rotate(xq).type_as(xq).to(xq.device), rotate(xk).type_as(xk).to(xk.device)
+ 
+ 
+ class Embed(nn.Module):
+@@ -388,15 +391,22 @@ class NaViT_ROPE(nn.Module):
+             sequences.append(seq)
+             freqs_cis_list.append(fc)
+ 
+-        # derive key padding mask
+-        lengths = torch.tensor([seq.shape[-2] for seq in sequences], device=device, dtype=torch.long)
+-        seq_arange = torch.arange(lengths.amax().item(), device=device)
+-        mask = seq_arange.unsqueeze(0) >= lengths.unsqueeze(1)  # [batch, seq]
+-        attn_mask = torch.where(mask, float('-inf'), 0.0)
+-        attn_mask = attn_mask.unsqueeze(1).unsqueeze(2)
+-
+-        x = pad_sequence(sequences).to(device)
+-        freqs_cis = pad_sequence(freqs_cis_list).to(device)
++        if len(sequences) == 1:
++            # Glutenless: one image needs no padding or mask, and ONNX can't
++            # export pad_sequence or the data-dependent mask length.
++            x = sequences[0].unsqueeze(0).to(device)
++            freqs_cis = freqs_cis_list[0].unsqueeze(0).to(device)
++            mask = attn_mask = None
++        else:
++            # derive key padding mask
++            lengths = torch.tensor([seq.shape[-2] for seq in sequences], device=device, dtype=torch.long)
++            seq_arange = torch.arange(lengths.amax().item(), device=device)
++            mask = seq_arange.unsqueeze(0) >= lengths.unsqueeze(1)  # [batch, seq]
++            attn_mask = torch.where(mask, float('-inf'), 0.0)
++            attn_mask = attn_mask.unsqueeze(1).unsqueeze(2)
++
++            x = pad_sequence(sequences).to(device)
++            freqs_cis = pad_sequence(freqs_cis_list).to(device)
+ 
+         x = self.patch_embed(x)
+ 

@@ -1,0 +1,27 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.ocrmodels'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.ocrmodels"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+  sourceSets {
+    main {
+      jniLibs.srcDirs += 'libs/jni'
+    }
+  }
+}
+
+dependencies {
+  // ONNX Runtime 1.30.0 with only the operators our models use (5 MB instead
+  // of 33) and no telemetry, built by tools/ocr-bench/build_ort.sh; not in git.
+  // Its native libraries are in libs/jni.
+  implementation files('libs/onnxruntime.jar')
+}

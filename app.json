@@ -51,6 +51,30 @@
           "speechRecognitionPermission": "Glutenless converts your speech to text to search for a beer by name.",
           "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Glutenless can scan a photo of a beer label from your photo library.",
+          "cameraPermission": "Glutenless uses the camera to scan a beer can, bottle, or menu so it can look up gluten content.",
+          "microphonePermission": "Glutenless uses the microphone for voice search."
+        }
+      ],
+      "./modules/label-reader/app.plugin.js",
+      "./plugins/withPlayServicesTextRecognition.js",
+      "./plugins/withLatestIntent.js",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.2.21",
+            "minSdkVersion": 26,
+            "buildArchs": ["arm64-v8a"],
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class ai.onnxruntime.** { *; }"
+          }
+        }
       ]
     ]
   }

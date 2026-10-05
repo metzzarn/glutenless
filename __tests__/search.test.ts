@@ -53,6 +53,24 @@ describe('searchBeers', () => {
     expect(ids('ipo')).toEqual([]);
   });
 
+  it('allows two typos only in long words', () => {
+    // "brewoog" is one letter off "brewdog" but two off "brewing", which half our breweries share.
+    const list = [beer(1, { brewery: 'Ghostfish Brewing' }), beer(2, { brewery: 'BrewDog' }), beer(3, { brewery: 'Abbeydale Brewery' })];
+    expect(searchBeers(list, 'brewoog').map((b) => b.id)).toEqual([2]);
+    expect(ids('grapefriut')).toEqual([3]);
+  });
+
+  it('counts swapped neighbouring letters as one typo', () => {
+    expect(ids('ghotsfish')).toEqual([3]);
+    expect(ids('estrlela')).toEqual([2]);
+  });
+
+  it('ranks typo matches by how close they are', () => {
+    // "glutenbugr" is one swap from "glutenburg", two typos from "glutenberg".
+    const list = [beer(1, { name: 'Glutenberg' }), beer(2, { name: 'Glutenburg' })];
+    expect(searchBeers(list, 'glutenbugr').map((b) => b.id)).toEqual([2, 1]);
+  });
+
   it('ranks exact matches before typo matches', () => {
     const list = [beer(1, { name: 'Pale Lager' }), beer(2, { name: 'Pale Larger' })];
     expect(searchBeers(list, 'larger').map((b) => b.id)).toEqual([2, 1]);

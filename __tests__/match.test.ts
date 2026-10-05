@@ -298,6 +298,13 @@ describe('menu entries, from real menus', () => {
     expect(menu('A FULL DRAUGHT BEER', '& CIDER RANGE IS AVAILABLE')).toEqual([]);
   });
 
+  it("doesn't take a brewer's look-alike with gluten for its gluten-free beer", () => {
+    expect(menu('Williams Bros Juicy Joker IPA 5.0%')).toEqual([]);
+    expect(menu('Mont Blanc La Blanche 4.7%')).toEqual([]);
+    expect(menu('Williams Bros Joker IPA 5.0%')).toEqual(['Joker IPA']);
+    expect(menu('Mont Blanc La Blonde 4.7%')).toEqual(['La Blonde']);
+  });
+
   it('matches a brewery with the rest of the name on one line', () => {
     expect(menu('GLUTEN-FREE', 'Brewdog Vagabond', 'Non-Alcoholic Beers')).toEqual(['Vagabond Pale Ale']);
     // A slash read as "I", with and without a space after it.

@@ -28,6 +28,7 @@ const STYLE_WORDS = new Set(
     'amber blonde blond golden gold red brown dark black white wheat weiss weizen witbier wit hefeweizen ' +
     'sour gose kolsch helles dunkel dunkles bock doppelbock marzen festbier session hazy juicy new ' +
     'england west coast double triple tripel dubbel quad imperial american english belgian irish german ' +
+    'japanese czech italian spanish dutch bavarian british scottish australian ' +
     'mexican light lite premium classic original craft beer cerveza bier birra biere gluten free ' +
     'glutenfri glutenfrei sin senza sans reduced removed alcohol alcoholic alkoholfrei alkoholfri alkoholiton ' +
     'alkoholfritt alcoholvrij alcolica analcolica analcolico na non zero cream extra special ' +
@@ -96,25 +97,39 @@ function breweryKeys(brewery: string): string[] {
     .filter((key) => key.length >= 3);
 }
 
-/** The single word most likely to identify a brewery in printed text, e.g. "Glutenberg" out of "Glutenberg (Brasseurs Sans Gluten)". */
+/**
+ * The single word most likely to identify a brewery in printed text, e.g.
+ * "Glutenberg" out of "Glutenberg (Brasseurs Sans Gluten)", "Brunehaut" out
+ * of "Brasserie de Brunehaut".
+ */
 function breweryToken(brewery: string): string {
   const words = normalize(brewery.replace(/\(.*?\)/g, '')).split(' ').filter(Boolean);
-  return words.find((w) => !BREWERY_STOP_WORDS.has(w) && w.length > 2) ?? words[0] ?? '';
+  return words.find((w) => !BREWERY_KEY_STOP_WORDS.has(w) && w.length > 2) ?? words[0] ?? '';
 }
 
 /**
- * Whether `needle` and `token` both occur within `window` lines of each
- * other. Menus print a beer's own brewery close to its name/style, so this
- * distinguishes an entry's own style column from a same-named style word
- * printed for a different beer elsewhere on the menu.
+ * Whether `needle` and `token` both occur, as whole words, within `window`
+ * lines of each other. Menus print a beer's own brewery close to its
+ * name/style, so this distinguishes an entry's own style column from a
+ * same-named style word printed for a different beer elsewhere on the menu.
+ * An occurrence on a line naming another brewery (`otherBrewery`) is that
+ * brewery's: "Glutenberg IPA" beside "Omission Lager" isn't Omission's IPA.
  */
-function occursNear(lines: string[], needle: string, token: string, window: number): boolean {
+function occursNear(
+  lines: string[],
+  needle: string,
+  token: string,
+  window: number,
+  otherBrewery: (line: string) => boolean = () => false,
+): boolean {
+  const has = (line: string, words: string) => ` ${line} `.includes(` ${words} `);
   for (let i = 0; i < lines.length; i++) {
-    if (!lines[i].includes(needle)) continue;
+    if (!has(lines[i], needle)) continue;
+    if (!has(lines[i], token) && otherBrewery(lines[i])) continue;
     const from = Math.max(0, i - window);
     const to = Math.min(lines.length, i + window + 1);
     for (let j = from; j < to; j++) {
-      if (lines[j].includes(token)) return true;
+      if (has(lines[j], token)) return true;
     }
   }
   return false;
@@ -539,12 +554,18 @@ export function isGlutenClaimWord(word: string): boolean {
  */
 export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[] {
   const words = vocabulary(beers);
-  const textReadings = readings(text, words);
-  if (!textReadings[0].length) return [];
-  const lines = text.split('\n').map(normalize);
-  const lineReadings = text.split('\n').map((line) => readings(line, words));
+  if (!normalize(text)) return [];
+  // A name may run onto the next line within a block of text, where a menu
+  // wraps it ("Peroni Nastro Azzurro / Gluten Free"), but not into the next
+  // block, such as a "GLUTEN FREE" heading under a regular beer. Readers
+  // separate blocks with a blank line.
+  const blockReadings = text.split(/\n\s*\n/).map((block) => readings(block, words));
+  const rawLines = text.split('\n').filter((line) => line.trim());
+  const lines = rawLines.map(normalize);
+  const lineReadings = rawLines.map((line) => readings(line, words));
   const has = (reading: string[][], word: string) => reading.some((r) => r.includes(word));
 
+  const breweryTokens = [...new Set(beers.map((b) => breweryToken(b.brewery)).filter(Boolean))];
   const candidates: MatchCandidate[] = [];
   const found = new Set<number>();
   const add = (candidate: MatchCandidate) => {
@@ -555,7 +576,9 @@ export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[
   for (const beer of beers) {
     const name = normalize(beer.name);
     if (!name) continue;
-    const printed = [name, ...(MENU_SHORT_NAMES[beer.name] ?? [])].find((n) => textReadings.some((r) => ` ${r.join(' ')} `.includes(` ${n} `)));
+    const printed = [name, ...(MENU_SHORT_NAMES[beer.name] ?? [])].find((n) =>
+      blockReadings.some((block) => block.some((r) => ` ${r.join(' ')} `.includes(` ${n} `))),
+    );
     if (!printed) continue;
     if (printed !== name) {
       add({ beer, field: 'name', needle: name, found: printed });
@@ -564,7 +587,8 @@ export function findMenuCandidates(text: string, beers: Beer[]): MatchCandidate[
     let rejected: string | undefined;
     if (isGenericName(name)) {
       const token = breweryToken(beer.brewery);
-      if (!token || !occursNear(lines, name, token, 2)) {
+      const otherBrewery = (line: string) => breweryTokens.some((t) => t !== token && ` ${line} `.includes(` ${t} `));
+      if (!token || !occursNear(lines, name, token, 2, otherBrewery)) {
         rejected = `generic name without brewery "${token}" nearby`;
       }
     }

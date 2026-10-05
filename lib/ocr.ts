@@ -46,11 +46,13 @@ export type PhotoScan = {
  * Build the full recognized text ourselves from `result.blocks` rather than
  * trusting the native module's own top-level `result.text` aggregation —
  * on some devices/photos that field hasn't reliably included every detected
- * block, which silently drops beers further down a photographed menu.
+ * block, which silently drops beers further down a photographed menu. Blocks
+ * are separated by a blank line, so the menu matcher doesn't run a name from
+ * one block into the next.
  */
 export function extractFullText(result: TextRecognitionResult): string {
   if (result.blocks?.length) {
-    return result.blocks.map((block) => block.text).join('\n');
+    return result.blocks.map((block) => block.text).join('\n\n');
   }
   return result.text;
 }
@@ -75,6 +77,34 @@ export async function recognizeText(uri: string): Promise<TextRecognitionResult>
     };
   }
   return TextRecognition.recognize(uri);
+}
+
+/**
+ * The reader's lines in block order, as ML Kit gives them: a line directly
+ * below another, about as tall and left-aligned with it, continues its
+ * block. The reader lists lines top to bottom across a whole menu, so a name
+ * wrapped onto two lines ("Peroni Nastro Azzurro / Gluten Free") had the
+ * next column's price between its halves.
+ */
+export function inBlocks<T extends Pick<OcrLine, 'frame'>>(lines: T[]): T[][] {
+  const blocks: T[][] = [];
+  const byTop = [...lines].sort((a, b) => a.frame.top - b.frame.top);
+  for (const line of byTop) {
+    const { left, top, height } = line.frame;
+    const block = blocks.find((b) => {
+      const last = b[b.length - 1].frame;
+      const gap = top - (last.top + last.height);
+      return (
+        gap > -0.3 * height &&
+        gap < 0.8 * Math.max(height, last.height) &&
+        Math.abs(left - last.left) < 1.5 * Math.max(height, last.height) &&
+        Math.max(height, last.height) < 1.6 * Math.min(height, last.height)
+      );
+    });
+    if (block) block.push(line);
+    else blocks.push([line]);
+  }
+  return blocks;
 }
 
 /** An on-device reader's line as an ML Kit block, so the rest of the app handles both alike. */
@@ -133,8 +163,10 @@ export async function scanPhoto(
         const { lines, timings } = await readAsync(photoUri);
         return { reader: 'PP-OCRv6 + WATERec', ...matchCanLines(lines, beers), ocrLines: lines, timings };
       }
-      const { lines, timings } = await readAsync(photoUri, { maxWaterecLines: 0, detectMaxSide: 1600 });
-      const text = lines.map((l) => l.text).join('\n');
+      const { lines: read, timings } = await readAsync(photoUri, { maxWaterecLines: 0, detectMaxSide: 1600 });
+      const blocks = inBlocks(read);
+      const lines = blocks.flat();
+      const text = blocks.map((block) => block.map((l) => l.text).join('\n')).join('\n\n');
       return {
         reader: 'PP-OCRv6',
         matches: matchBeersInMenuText(text, beers),

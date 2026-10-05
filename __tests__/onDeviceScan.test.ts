@@ -9,7 +9,7 @@ jest.mock('../modules/ocr-models', () => ({
 
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import type { Beer } from '../lib/db';
-import { scanPhoto } from '../lib/ocr';
+import { inBlocks, scanPhoto } from '../lib/ocr';
 import { readAsync, type OcrLine } from '../modules/ocr-models';
 
 const beer = (id: number, name: string, brewery: string) => ({ id, name, brewery }) as Beer;
@@ -77,5 +77,25 @@ describe('scanning a can with the on-device reader', () => {
     const scan = await scanPhoto('file://menu.jpg', 'menu', beers);
     expect(scan.reader).toBe('ML Kit');
     expect(scan.matches).toEqual([beers[2]]);
+  });
+});
+
+describe('menu lines in block order', () => {
+  const at = (text: string, left: number, top: number, width = 300, height = 30) => ({ text, frame: { left, top, width, height } });
+
+  it('keeps a wrapped name together, apart from the prices and the other column', () => {
+    // A two-column pub menu, read top to bottom across both columns.
+    const lines = [
+      at('Guinness', 100, 100), at('5.90', 520, 100, 60), at('Peroni Nastro Azzurro', 700, 100), at('5.20', 1150, 112, 60),
+      at('Irish stout 4.2%', 100, 135, 200, 24), at('Gluten Free', 700, 135), at('330ml 5.1%', 700, 170, 200, 24),
+    ];
+    expect(inBlocks(lines).map((block) => block.map((l) => l.text))).toEqual([
+      ['Guinness', 'Irish stout 4.2%'], ['5.90'], ['Peroni Nastro Azzurro', 'Gluten Free', '330ml 5.1%'], ['5.20'],
+    ]);
+  });
+
+  it('starts a new block after a gap, such as before a heading', () => {
+    const lines = [at('Peroni Nastro Azzurro', 100, 100), at('GLUTEN FREE', 100, 200, 300, 40), at('Brewdog Vagabond', 100, 260)];
+    expect(inBlocks(lines).map((block) => block.map((l) => l.text))).toEqual([['Peroni Nastro Azzurro'], ['GLUTEN FREE', 'Brewdog Vagabond']]);
   });
 });

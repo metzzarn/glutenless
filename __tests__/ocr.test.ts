@@ -13,14 +13,14 @@ function block(text: string) {
 }
 
 describe('extractFullText', () => {
-  it('joins every block, not just the first', () => {
+  it('joins every block, not just the first, with a blank line between blocks', () => {
     const result = {
       text: 'Shrouded Summit IPA', // simulates a native `.text` that dropped later blocks
       blocks: [block('Shrouded Summit IPA'), block('Glutenberg Blonde'), block('New Planet Pale Ale')],
     } as TextRecognitionResult;
 
     expect(extractFullText(result)).toBe(
-      'Shrouded Summit IPA\nGlutenberg Blonde\nNew Planet Pale Ale'
+      'Shrouded Summit IPA\n\nGlutenberg Blonde\n\nNew Planet Pale Ale'
     );
   });
 
@@ -43,7 +43,7 @@ describe('analyzing photos', () => {
     recognizes('DAURA DAMM', 'Pale lager 5.4%');
     const scan = await scanPhoto('file://can.jpg', 'can', beers);
     expect(scan.matches).toEqual([beers[0]]);
-    expect(scan.text).toBe('DAURA DAMM\nPale lager 5.4%');
+    expect(scan.text).toBe('DAURA DAMM\n\nPale lager 5.4%');
     expect(TextRecognition.recognize).toHaveBeenCalledWith('file://can.jpg');
   });
 

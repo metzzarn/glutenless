@@ -314,6 +314,31 @@ describe('menu entries, from real menus', () => {
     expect(menu('Daura Damm .... 8')).toEqual(['Daura Damm']);
   });
 
+  it("gives a style-only name to the brewery on its own line, as a whole word", () => {
+    // Omission's "IPA" is two lines from "Omission Lager", but this IPA is Glutenberg's.
+    const breweries = matchBeersInMenuText('Gluten free\nGlutenberg IPA 7\nOmission Lager 6', beers).map((b) => `${b.name} | ${b.brewery}`);
+    expect(breweries.sort()).toEqual(['IPA | Glutenberg (Brasseurs Sans Gluten)', 'Lager | Omission Brewing']);
+    // "Greene King IPA" is not Green's IPA.
+    expect(menu('Greene King IPA 4.60', 'Old Speckled Hen 5.10')).toEqual([]);
+  });
+
+  it('finds a style-only name next to a brewery known by a later word', () => {
+    expect(menu('Brunehaut Bio Blonde', 'Blonde GF | 6.5% | 330ml')).toEqual(['Bio Blonde']);
+  });
+
+  it('runs a name onto the next line within a block, never into the next block', () => {
+    // A wrapped name.
+    expect(menu('Peroni Nastro Azzurro', 'Gluten Free', '330ml 5.1%')).toEqual(['Peroni Nastro Azzurro Gluten Free']);
+    // A regular beer above a heading: separate blocks.
+    expect(matchBeersInMenuText('Stella Artois 5.80\n\nGluten Free\nBrewdog Vagabond', beers).map((b) => b.name)).toEqual(['Vagabond Pale Ale']);
+    expect(matchBeersInMenuText('Ambar Especial\n\nSIN GLUTEN\nDaura Damm', beers).map((b) => b.name)).toEqual(['Daura Damm']);
+  });
+
+  it('does not take a description for a name', () => {
+    // TWOBAYS' "Japanese Rice Lager" in a description of Asahi.
+    expect(menu('Asahi Super Dry 6.00', 'Crisp Japanese rice lager, 5.2%')).toEqual([]);
+  });
+
   it('does not guess a beer from its brewery and a gluten-free claim', () => {
     // Omnipollo's gluten-free pilsner in our list is Stellaris, but the menu doesn't name it.
     expect(menu('Carlsberg Hof, Lager', 'Omnipollo Zodiak, IPA', 'Omnipollo Gluten Free, Pilsner')).toEqual([]);

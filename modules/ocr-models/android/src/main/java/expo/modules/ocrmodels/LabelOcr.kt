@@ -32,6 +32,8 @@ data class OcrLine(
   /** PP-OCRv6's reading and its mean character confidence (0–1). */
   val text: String,
   val score: Float,
+  /** The line's rotated rectangle, its corners in order around it: its slant and true height. */
+  val corners: List<Pair<Float, Float>>,
   /** WATERec's reading of the same crop, for lines PP-OCRv6 was unsure of. */
   var waterecText: String? = null,
   var waterecScore: Float? = null,
@@ -115,7 +117,7 @@ class LabelOcr(private val env: OrtEnvironment, private val open: (String) -> By
    * axis-aligned bounds around it for reporting.
    */
   private data class Box(val cx: Float, val cy: Float, val width: Float, val height: Float, val angle: Float) {
-    private val corners: List<Pair<Float, Float>>
+    val corners: List<Pair<Float, Float>>
       get() {
         val c = cos(angle); val s = sin(angle)
         return listOf(-1f to -1f, 1f to -1f, 1f to 1f, -1f to 1f).map { (u, v) ->
@@ -339,7 +341,7 @@ class LabelOcr(private val env: OrtEnvironment, private val open: (String) -> By
     }
     val left = max(0, box.left.toInt())
     val top = max(0, box.top.toInt())
-    return OcrLine(left, top, min(photo.width, box.right.roundToInt()) - left, min(photo.height, box.bottom.roundToInt()) - top, text, score)
+    return OcrLine(left, top, min(photo.width, box.right.roundToInt()) - left, min(photo.height, box.bottom.roundToInt()) - top, text, score, box.corners)
   }
 
   private fun ctcDecode(probs: FloatArray, steps: Int, classes: Int): Pair<String, Float> {

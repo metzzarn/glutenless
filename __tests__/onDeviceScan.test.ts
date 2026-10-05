@@ -19,6 +19,7 @@ const line = (text: string, waterecText: string | null = null): OcrLine => ({
   text,
   score: waterecText ? 0.5 : 0.99,
   frame,
+  corners: [[0, 0], [10, 0], [10, 10], [0, 10]],
   waterecText,
   waterecScore: waterecText ? 0.9 : null,
 });
@@ -92,6 +93,22 @@ describe('menu lines in block order', () => {
     expect(inBlocks(lines).map((block) => block.map((l) => l.text))).toEqual([
       ['Guinness', 'Irish stout 4.2%'], ['5.90'], ['Peroni Nastro Azzurro', 'Gluten Free', '330ml 5.1%'], ['5.20'],
     ]);
+  });
+
+  it('compares lines with a tilted photo turned upright', () => {
+    // A menu photographed 6° off: each line's upright box is over twice its
+    // text's height, and consecutive boxes overlap.
+    const tilt = (6 * Math.PI) / 180;
+    const slanted = (text: string, x: number, y: number, width = 600, height = 40) => {
+      const pts = [[0, 0], [width, 0], [width, height], [0, height]].map(([u, v]) => [x + u * Math.cos(tilt) - v * Math.sin(tilt), y + u * Math.sin(tilt) + v * Math.cos(tilt)] as [number, number]);
+      const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+      const frame = { left: Math.min(...xs), top: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+      return { text, frame, corners: pts };
+    };
+    const lines = [slanted('Nils Oscar India Ale', 100, 100), slanted('Glutenfri', 95, 150, 250), slanted('33 cl', 90, 200, 120, 30)];
+    expect(inBlocks(lines).map((block) => block.map((l) => l.text))).toEqual([['Nils Oscar India Ale', 'Glutenfri', '33 cl']]);
+    // Without the corners, the overlapping upright boxes don't group.
+    expect(inBlocks(lines.map(({ corners, ...rest }) => rest))).not.toHaveLength(1);
   });
 
   it('starts a new block after a gap, such as before a heading', () => {

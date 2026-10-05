@@ -4,8 +4,10 @@ export type OcrLine = {
   /** PP-OCRv6's reading, and its mean character confidence (0–1). */
   text: string;
   score: number;
-  /** In the photo's pixels. */
+  /** In the photo's pixels: the upright box around the line. */
   frame: { left: number; top: number; width: number; height: number };
+  /** The line's rotated rectangle, its corners in order around it: its slant and true height. */
+  corners: [number, number][];
   /** WATERec's reading of the same crop, for lines PP-OCRv6 was unsure of. */
   waterecText: string | null;
   waterecScore: number | null;

@@ -73,6 +73,7 @@ class OcrModelsModule : Module() {
               "text" to it.text,
               "score" to it.score.toDouble(),
               "frame" to mapOf("left" to it.left, "top" to it.top, "width" to it.width, "height" to it.height),
+              "corners" to it.corners.map { (x, y) -> listOf(x.toDouble(), y.toDouble()) },
               "waterecText" to it.waterecText,
               "waterecScore" to it.waterecScore?.toDouble(),
             )

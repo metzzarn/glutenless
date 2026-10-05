@@ -124,8 +124,10 @@ function occursNear(
 ): boolean {
   const has = (line: string, words: string) => ` ${line} `.includes(` ${words} `);
   for (let i = 0; i < lines.length; i++) {
-    if (!has(lines[i], needle)) continue;
-    if (!has(lines[i], token) && otherBrewery(lines[i])) continue;
+    // The name may be wrapped onto the next line ("Nils Oscar India Ale / Glutenfri").
+    const entry = has(lines[i], needle) ? lines[i] : `${lines[i]} ${lines[i + 1] ?? ''}`;
+    if (!has(entry, needle)) continue;
+    if (!has(entry, token) && otherBrewery(entry)) continue;
     const from = Math.max(0, i - window);
     const to = Math.min(lines.length, i + window + 1);
     for (let j = from; j < to; j++) {

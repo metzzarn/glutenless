@@ -327,8 +327,9 @@ describe('menu entries, from real menus', () => {
   });
 
   it('runs a name onto the next line within a block, never into the next block', () => {
-    // A wrapped name.
+    // A wrapped name, including one of only style words that needs its brewery.
     expect(menu('Peroni Nastro Azzurro', 'Gluten Free', '330ml 5.1%')).toEqual(['Peroni Nastro Azzurro Gluten Free']);
+    expect(menu('Nils Oscar God Lager', '33 cl', 'Nils Oscar India Ale', 'Glutenfri', '33 cl')).toEqual(['India Ale Glutenfri']);
     // A regular beer above a heading: separate blocks.
     expect(matchBeersInMenuText('Stella Artois 5.80\n\nGluten Free\nBrewdog Vagabond', beers).map((b) => b.name)).toEqual(['Vagabond Pale Ale']);
     expect(matchBeersInMenuText('Ambar Especial\n\nSIN GLUTEN\nDaura Damm', beers).map((b) => b.name)).toEqual(['Daura Damm']);

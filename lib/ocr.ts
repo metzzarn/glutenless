@@ -80,31 +80,57 @@ export async function recognizeText(uri: string): Promise<TextRecognitionResult>
 }
 
 /**
- * The reader's lines in block order, as ML Kit gives them: a line directly
- * below another, about as tall and left-aligned with it, continues its
- * block. The reader lists lines top to bottom across a whole menu, so a name
- * wrapped onto two lines ("Peroni Nastro Azzurro / Gluten Free") had the
- * next column's price between its halves.
+ * The reader's lines grouped into blocks, as ML Kit gives them: a line
+ * directly below another, about as tall and left-aligned with it, continues
+ * its block. The reader lists lines top to bottom across a whole menu, so a
+ * name wrapped onto two lines ("Peroni Nastro Azzurro / Gluten Free") had
+ * the next column's price between its halves.
+ *
+ * Positions are compared with the photo turned upright: on a tilted photo
+ * the upright box around a slanted line is two or three times as tall as
+ * its text, and boxes of consecutive lines overlap. A line's `corners` (its
+ * rotated rectangle) give its true slant and height; without them, `frame`.
  */
-export function inBlocks<T extends Pick<OcrLine, 'frame'>>(lines: T[]): T[][] {
-  const blocks: T[][] = [];
-  const byTop = [...lines].sort((a, b) => a.frame.top - b.frame.top);
-  for (const line of byTop) {
-    const { left, top, height } = line.frame;
+export function inBlocks<T extends Pick<OcrLine, 'frame'> & { corners?: [number, number][] }>(lines: T[]): T[][] {
+  const quad = (l: T): [number, number][] => {
+    const { left, top, width, height } = l.frame;
+    return l.corners ?? [[left, top], [left + width, top], [left + width, top + height], [left, top + height]];
+  };
+  // The page's slant: the median angle of the lines' long sides.
+  const angles = lines.map((l) => {
+    const [a, b, c] = quad(l);
+    const [p, q] = Math.hypot(b[0] - a[0], b[1] - a[1]) >= Math.hypot(c[0] - b[0], c[1] - b[1]) ? [a, b] : [b, c];
+    let angle = Math.atan2(q[1] - p[1], q[0] - p[0]);
+    if (angle > Math.PI / 2) angle -= Math.PI;
+    if (angle <= -Math.PI / 2) angle += Math.PI;
+    return angle;
+  });
+  const slant = [...angles].sort((x, y) => x - y)[Math.floor(angles.length / 2)] ?? 0;
+  const cos = Math.cos(-slant), sin = Math.sin(-slant);
+  const upright = lines.map((line) => {
+    const pts = quad(line).map(([x, y]) => [x * cos - y * sin, x * sin + y * cos]);
+    const left = Math.min(...pts.map((p) => p[0]));
+    const top = Math.min(...pts.map((p) => p[1]));
+    return { line, left, top, height: Math.max(...pts.map((p) => p[1])) - top };
+  });
+
+  const blocks: (typeof upright)[] = [];
+  for (const box of upright.sort((a, b) => a.top - b.top)) {
     const block = blocks.find((b) => {
-      const last = b[b.length - 1].frame;
-      const gap = top - (last.top + last.height);
+      const last = b[b.length - 1];
+      const gap = box.top - (last.top + last.height);
+      const tall = Math.max(box.height, last.height);
       return (
-        gap > -0.3 * height &&
-        gap < 0.8 * Math.max(height, last.height) &&
-        Math.abs(left - last.left) < 1.5 * Math.max(height, last.height) &&
-        Math.max(height, last.height) < 1.6 * Math.min(height, last.height)
+        gap > -0.3 * tall &&
+        gap < 0.8 * tall &&
+        Math.abs(box.left - last.left) < 1.5 * tall &&
+        tall < 1.6 * Math.min(box.height, last.height)
       );
     });
-    if (block) block.push(line);
-    else blocks.push([line]);
+    if (block) block.push(box);
+    else blocks.push([box]);
   }
-  return blocks;
+  return blocks.map((block) => block.map((box) => box.line));
 }
 
 /** An on-device reader's line as an ML Kit block, so the rest of the app handles both alike. */

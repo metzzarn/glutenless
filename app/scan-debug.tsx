@@ -16,7 +16,7 @@ import {
 import { listBeers, type Beer } from '../lib/db';
 import { isGlutenClaimWord, normalizeOcrText, unseenNameWords, type MatchCandidate } from '../lib/match';
 import { scanPhoto, type PhotoScan } from '../lib/ocr';
-import type { OcrLine } from '../modules/ocr-models';
+import { saveReport, type OcrLine } from '../modules/ocr-models';
 import { getLastScan, type DebugScan } from '../lib/scanDebug';
 import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../lib/theme';
 
@@ -228,6 +228,35 @@ export default function ScanDebugScreen() {
     }
   }, []);
 
+  const largeTextReadings = AI_VARIANTS.map((v) => results[v.id])
+    .flatMap((r) => (r?.state === 'done' ? [r.reading] : []));
+  const aiDone = aiStatus !== 'available' || largeTextReadings.length === AI_VARIANTS.length;
+  const outcome = !scan
+    ? []
+    : aiDone
+      ? normalScanOutcome(scan, largeTextReadings.length >= 2 ? combineAiReadings(largeTextReadings, beers) : null)
+      : ['Waiting for Gemini Nano…'];
+
+  // Each finished report is saved on the phone with its photo, for pulling
+  // over adb (tools/pull-reports.sh) instead of sharing it by hand. Saved
+  // again if it changes, e.g. after downloading Gemini Nano.
+  const [reportName] = useState(() => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `scan ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())} ${scan?.mode ?? ''}`.trim();
+  });
+  const [savedTo, setSavedTo] = useState<string | null>(null);
+  const finished = aiDone && aiStatus !== 'checking' && aiStatus !== 'downloading' && comparison?.state !== 'running';
+  const report = scan && finished ? scanReport(scan, aiStatus, results, outcome, comparison) : null;
+  useEffect(() => {
+    if (!scan || !report) return;
+    try {
+      setSavedTo(saveReport(reportName, report, scan.photo.uri));
+    } catch {
+      // Saving is a convenience; the report can still be shared.
+    }
+  }, [report]);
+
   if (!scan) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -240,13 +269,6 @@ export default function ScanDebugScreen() {
   const scale = photoWidth / scan.photo.width;
   const lines = scan.blocks.flatMap((block) => block.lines);
   const matchedIds = new Set([...scan.matches, ...(scan.confirm ? [scan.confirm] : [])].map((b) => b.id));
-
-  const largeTextReadings = AI_VARIANTS.map((v) => results[v.id])
-    .flatMap((r) => (r?.state === 'done' ? [r.reading] : []));
-  const aiDone = aiStatus !== 'available' || largeTextReadings.length === AI_VARIANTS.length;
-  const outcome = aiDone
-    ? normalScanOutcome(scan, largeTextReadings.length >= 2 ? combineAiReadings(largeTextReadings, beers) : null)
-    : ['Waiting for Gemini Nano…'];
 
   const openResult = () => {
     if (scan.mode === 'menu') {
@@ -279,6 +301,12 @@ export default function ScanDebugScreen() {
           <Text style={styles.shareText}>Share report</Text>
         </Pressable>
       </View>
+
+      {Platform.OS === 'android' ? (
+        <Text style={[styles.meta, { marginBottom: spacing(2) }]}>
+          {savedTo ? `Saved on the phone: reports/${reportName}.txt` : 'Saved on the phone when finished'}
+        </Text>
+      ) : null}
 
       <View style={[styles.verdict, { marginBottom: spacing(2.5) }]}>
         <Text style={styles.meta}>What a normal scan would do</Text>

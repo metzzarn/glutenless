@@ -48,6 +48,7 @@ modules/*/android/build/
 
 # OCR comparison photos (not ours to publish)
 tools/ocr-bench/images/beers/
+tools/ocr-bench/reports/
 tools/ocr-bench/.venv/
 tools/ocr-bench/*.log
 tools/ocr-bench/results.json

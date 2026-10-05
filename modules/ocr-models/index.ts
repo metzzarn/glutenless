@@ -23,6 +23,7 @@ type NativeOcrModels = {
   isReady(): boolean;
   modelDir(): string | null;
   listImages(dir: string): string[];
+  saveReport(name: string, text: string, photoUri: string | null): string;
   readAsync(uri: string, waterecBelow: number, maxWaterecLines: number, detectMaxSide: number): Promise<OcrResult>;
 };
 
@@ -39,6 +40,15 @@ export const isOcrModelsAvailable = native !== null && native.isReady();
 /** Debug: the photos in a folder of the app's external files dir, as file:// URIs. */
 export function listImages(dir: 'images' | 'menus' = 'images'): string[] {
   return native?.listImages(dir) ?? [];
+}
+
+/**
+ * Debug: saves a scan debug report and a copy of its photo to the app's
+ * external files dir (reports/), for pulling over adb. Returns the report's
+ * path, or null where that isn't available (iOS).
+ */
+export function saveReport(name: string, text: string, photoUri: string | null): string | null {
+  return native?.saveReport(name, text, photoUri) ?? null;
 }
 
 /**

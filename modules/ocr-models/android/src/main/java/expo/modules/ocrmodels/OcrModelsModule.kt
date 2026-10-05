@@ -59,6 +59,22 @@ class OcrModelsModule : Module() {
     }
 
     /**
+     * Debug: saves a scan debug report as reports/<name>.txt in the app's
+     * external files dir, with a copy of its photo beside it (once), where
+     * adb can pull them (tools/pull-reports.sh). Returns the report's path.
+     */
+    Function("saveReport") { name: String, text: String, photoUri: String? ->
+      val dir = appContext.reactContext?.getExternalFilesDir("reports") ?: throw IllegalStateException("No external files dir")
+      val report = File(dir, "$name.txt").apply { writeText(text) }
+      val photo = photoUri?.let { Uri.parse(it).path }?.let(::File)?.takeIf { it.isFile }
+      if (photo != null) {
+        val copy = File(dir, "$name.${photo.extension.ifEmpty { "jpg" }}")
+        if (!copy.exists()) photo.copyTo(copy)
+      }
+      report.absolutePath
+    }
+
+    /**
      * Reads a photo (a file:// URI), finding its text at `detectMaxSide` px.
      * Lines PP-OCRv6 read with a mean confidence below `waterecBelow` are read
      * again by WATERec, the largest `maxWaterecLines` of them.

@@ -2,7 +2,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBadge } from '../components/StatusBadge';
 import { ZoomableCamera } from '../components/ZoomableCamera';
@@ -51,7 +51,8 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [ready, setReady] = useState(false);
   const isFocused = useIsFocused();
-  const [detecting, setDetecting] = useState<string | null>(null);
+  // While a photo is being taken or read: the photo (once taken) and what's happening, for the loading screen.
+  const [scanning, setScanning] = useState<{ uri: string | null; step: string } | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const debug = useScanDebugEnabled();
 
@@ -79,82 +80,90 @@ export default function CameraScreen() {
 
 
   const scanImage = useCallback(async (photo: { uri: string; width: number; height: number; fileName?: string }) => {
-    setDetecting('Analyzing photo…');
-    setNotice(null);
-    const beers = await listBeers('all', '');
-    const scanMode = mode === 'menu' ? 'menu' : 'can';
-    const started = Date.now();
-    const scan = await scanPhoto(photo.uri, scanMode, beers);
-    setDetecting(null);
+    try {
+      setScanning({ uri: photo.uri, step: mode === 'menu' ? 'Reading the menu…' : 'Reading the label…' });
+      setNotice(null);
+      const beers = await listBeers('all', '');
+      const scanMode = mode === 'menu' ? 'menu' : 'can';
+      const started = Date.now();
+      const scan = await scanPhoto(photo.uri, scanMode, beers);
 
-    if (debug) {
-      setLastScan({
-        ...scan,
-        mode: scanMode,
-        photo: { uri: photo.uri, width: photo.width, height: photo.height, fileName: photo.fileName },
-        durationMs: Date.now() - started,
-      });
-      router.push('/scan-debug');
-      return;
-    }
-
-    const matches = scan.matches;
-    if (scanMode === 'menu') {
-      if (matches.length === 0) {
-        setNotice({
-          title: 'No gluten-free beers found',
-          body: "None of the beers we could read on this menu are in our gluten-free list. Assume they contain gluten, or ask the staff.",
+      if (debug) {
+        setLastScan({
+          ...scan,
+          mode: scanMode,
+          photo: { uri: photo.uri, width: photo.width, height: photo.height, fileName: photo.fileName },
+          durationMs: Date.now() - started,
         });
-        return;
-      }
-      router.push({
-        pathname: '/results',
-        params: { ids: matches.map((b) => b.id).join(',') },
-      });
-    } else {
-      const match = matches[0];
-      if (match) {
-        openBeer(match.id, true);
+        router.push('/scan-debug');
         return;
       }
 
-      const otherwiseFromScan = scan.suggestions.length ? pickNotice(scan.suggestions, [scan.text]) : NOT_IN_LIST;
-      if (scan.confirm) {
-        setNotice({
-          title: `Is this ${scan.confirm.name}?`,
-          body: `Read from the label's lettering, which can be misread. Check that your label says “${scan.confirm.name}” before trusting it.`,
-          confirm: scan.confirm,
-          otherwise: otherwiseFromScan,
+      const matches = scan.matches;
+      if (scanMode === 'menu') {
+        if (matches.length === 0) {
+          setNotice({
+            title: 'No gluten-free beers found',
+            body: "None of the beers we could read on this menu are in our gluten-free list. Assume they contain gluten, or ask the staff.",
+          });
+          return;
+        }
+        router.push({
+          pathname: '/results',
+          params: { ids: matches.map((b) => b.id).join(',') },
         });
-        return;
-      }
+      } else {
+        const match = matches[0];
+        if (match) {
+          openBeer(match.id, true);
+          return;
+        }
 
-      // OCR found no beer: on phones with an on-device model, read the label
-      // again with it (it reads script lettering OCR can't).
-      setDetecting('Reading the label…');
-      const ai = await identifyWithAi(photo.uri, beers);
-      setDetecting(null);
+        const otherwiseFromScan = scan.suggestions.length ? pickNotice(scan.suggestions, [scan.text]) : NOT_IN_LIST;
+        if (scan.confirm) {
+          setNotice({
+            title: `Is this ${scan.confirm.name}?`,
+            body: `Read from the label's lettering, which can be misread. Check that your label says “${scan.confirm.name}” before trusting it.`,
+            confirm: scan.confirm,
+            otherwise: otherwiseFromScan,
+          });
+          return;
+        }
 
-      const texts = [scan.text, ...(ai?.texts ?? [])];
-      const suggestions = scan.suggestions.length ? scan.suggestions : (ai?.suggestions ?? []);
-      const otherwise = suggestions.length ? pickNotice(suggestions, texts) : NOT_IN_LIST;
-      if (ai?.match) {
-        setNotice({
-          title: `Is this ${ai.match.name}?`,
-          body: `Read from the label by on-device AI. Check that your label says “${ai.match.name}” before trusting it.`,
-          confirm: ai.match,
-          otherwise,
-        });
-        return;
+        // OCR found no beer: on phones with an on-device model, read the label
+        // again with it (it reads script lettering OCR can't).
+        setScanning({ uri: photo.uri, step: 'Looking closer at the label…' });
+        const ai = await identifyWithAi(photo.uri, beers);
+
+        const texts = [scan.text, ...(ai?.texts ?? [])];
+        const suggestions = scan.suggestions.length ? scan.suggestions : (ai?.suggestions ?? []);
+        const otherwise = suggestions.length ? pickNotice(suggestions, texts) : NOT_IN_LIST;
+        if (ai?.match) {
+          setNotice({
+            title: `Is this ${ai.match.name}?`,
+            body: `Read from the label by on-device AI. Check that your label says “${ai.match.name}” before trusting it.`,
+            confirm: ai.match,
+            otherwise,
+          });
+          return;
+        }
+        setNotice(otherwise);
       }
-      setNotice(otherwise);
+    } finally {
+      // Every way out of a scan, including an error, ends the loading screen.
+      setScanning(null);
     }
   }, [debug, mode, openBeer, router]);
 
   const takePhoto = useCallback(async () => {
     if (!cameraRef.current || !ready) return;
-    const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
-    if (photo?.uri) await scanImage(photo);
+    setScanning({ uri: null, step: 'Taking photo…' });
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
+      if (photo?.uri) await scanImage(photo);
+    } finally {
+      setScanning(null);
+    }
   }, [ready, scanImage]);
 
   // Scan debug only: run the scan on a saved photo, to compare readers on the same images.
@@ -286,7 +295,7 @@ export default function CameraScreen() {
           <Pressable
             style={styles.pickButton}
             onPress={pickPhoto}
-            disabled={!!detecting}
+            disabled={!!scanning}
             accessibilityRole="button"
             accessibilityLabel="Scan a photo from the library"
           >
@@ -294,18 +303,28 @@ export default function CameraScreen() {
           </Pressable>
         ) : null}
         <Pressable
-          style={[styles.shutter, !!detecting && styles.shutterDisabled]}
+          style={[styles.shutter, !!scanning && styles.shutterDisabled]}
           onPress={takePhoto}
           onLongPress={() => setScanDebugEnabled(!debug)}
-          disabled={!!detecting || !ready}
+          disabled={!!scanning || !ready}
           accessibilityRole="button"
           accessibilityLabel="Take photo"
         />
-        {detecting ? <Text style={styles.detectingText}>{detecting}</Text> : null}
       </View>
+
+      {scanning ? (
+        <View style={styles.scanning} accessibilityLiveRegion="polite">
+          {scanning.uri ? <Image source={{ uri: scanning.uri }} style={styles.scanningPhoto} resizeMode="contain" /> : null}
+          <View style={styles.scanningShade} />
+          <ActivityIndicator size="large" color={colors.white} />
+          <Text style={styles.scanningText}>{scanning.step}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
+
+const fill = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
 
 const makeStyles = (colors: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cameraBg },
@@ -400,7 +419,16 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
   pickButtonText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
-  detectingText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
+  scanning: {
+    ...fill,
+    backgroundColor: colors.cameraBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing(4),
+  },
+  scanningPhoto: fill,
+  scanningShade: { ...fill, backgroundColor: 'rgba(0,0,0,0.55)' },
+  scanningText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 15 },
   permissionText: {
     color: colors.ink,
     fontFamily: fonts.sans,

@@ -14,7 +14,7 @@
  * the menu doesn't list, the error that must stay at 0: a menu shown as
  * offering a gluten-free beer it doesn't have.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { matchBeersInMenuText } from '../../lib/match.ts';
 import { beers, expectedBeers, here } from './expected.mts';
@@ -45,10 +45,13 @@ if (log) {
   writeFileSync(RESULTS, JSON.stringify(results, null, 2) + '\n');
 }
 
-const readers = [...new Set(Object.values(results).flatMap((r) => Object.keys(r)))];
+// Only photos still in images/menus/: readings of removed ones stay in the file but aren't scored.
+const photos = new Set(readdirSync(join(here, 'images', 'menus')));
+const scored = Object.entries(results).filter(([file]) => photos.has(file));
+const readers = [...new Set(scored.flatMap(([, r]) => Object.keys(r)))];
 const score: Record<string, { found: number; expected: number; wrong: number; ms: number; menus: number }> = {};
 
-for (const [file, byReader] of Object.entries(results)) {
+for (const [file, byReader] of scored) {
   const expected = expectedBeers(file);
   console.log(`\n${file}  →  expected: ${expected.map((b) => b.name).join(', ') || 'none'}`);
   for (const reader of readers) {

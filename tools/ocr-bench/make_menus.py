@@ -3,7 +3,7 @@ Draws drinks menus for the menu bench (score_menus.mts), made to look
 photographed: tilt and perspective, a table around the paper, uneven light,
 blur, noise and JPEG compression.
 
-Three kinds, 20 in all:
+Three kinds, 25 in all, five of them Swedish:
   - gluten-free beers among ordinary ones,
   - gluten-free beers next to their look-alikes with gluten (Estrella Damm
     and Daura Damm, Peroni and Peroni Gluten Free, Punk IPA and Gluten-Free
@@ -115,6 +115,26 @@ MENUS: list[dict] = [
     dict(expected=[], style='pub', fonts='condensed', title='THE RED LION',
          sections=[('Draught', [('BrewDog Punk IPA', '5.4%', '6.40'), ('BrewDog Hazy Jane', '5.0%', '6.40'), ('Stella Artois', '4.6%', '5.80')]),
                    ('Bottles', [('Old Speckled Hen', '5.0%', '5.20'), ('Greene King IPA', '3.6%', '4.60'), ('St Peter\'s Golden Ale', '4.7%', '5.40')])]),
+
+    # Swedish menus.
+    dict(expected=['Poppelino Lager Glutenfri', 'Nils Oscar India Ale Glutenfri'], style='pub', fonts='serif', title='ÖL',
+         sections=[('Fatöl', [('Mariestads Export', '40 cl', '78 kr'), ('Pilsner Urquell', '40 cl', '84 kr'), ('Poppels Poppelino Lager', '40 cl', '82 kr')]),
+                   ('Flasköl', [('Poppels Poppelino Lager Glutenfri', '33 cl', '72 kr'), ('Nils Oscar God Lager', '33 cl', '69 kr'), ('Nils Oscar India Ale Glutenfri', '33 cl', '76 kr')])]),
+    dict(expected=['Stigbergets Whispering Pines', 'Brewski Sansa'], style='chalk', fonts='script', title='Dagens öl',
+         sections=[('På fat', [('Stigbergets West Coast IPA', None, '89'), ('Stigbergets Whispering Pines', None, '92'), ('Brewski Mango Feelings', None, '95')]),
+                   ('Glutenfritt', [('Brewski Sansa', None, '89')])]),
+    dict(expected=['Åbro Arton56 Glutenfri', 'Rådanäs Ekologisk Pilsner Glutenfri', 'Rådanäs IPA Glutenfri'], style='table', fonts='condensed', title='FLASKÖL & BURK',
+         sections=[('', [('Åbro Original', 'Ljus lager | 5,2% | 33 cl', '59'), ('Åbro Arton56 Glutenfri', 'Ljus lager | 5,6% | 33 cl', '65'),
+                         ('Rådanäs Ekologisk Pilsner', 'Pilsner | 4,8% | 33 cl', '68'), ('Rådanäs Ekologisk Pilsner Glutenfri', 'Pilsner | 4,8% | 33 cl', '72'),
+                         ('Rådanäs IPA', 'IPA | 5,5% | 33 cl', '72'), ('Rådanäs IPA Glutenfri', 'IPA | 5,5% | 33 cl', '76')])]),
+    dict(expected=['Luz Gluten-Free Mexican Lager', 'London Lager Glutenfri', 'Poppels Hoppy Alcohol Free Pale Ale Glutenfri'], style='restaurant', fonts='palatino', title='Öl & alkoholfritt',
+         sections=[('', [('Omnipollo Luz Gluten-Free Mexican Lager', 'Krispig mexikansk lager, glutenfri, 4,5%', '79 kr'), ('Poppels London Lager', 'Mörk lager med toner av kola, 4,7%', '75 kr'),
+                         ('Poppels London Lager Glutenfri', 'Samma mörka lager, glutenfri, 4,7%', '75 kr'), ('Pistonhead Kustom Lager', 'Ljus lager, 5,3%', '72 kr'),
+                         ('Poppels Hoppy Alcohol Free Pale Ale Glutenfri', 'Alkoholfri och glutenfri, 0,3%', '55 kr')])]),
+    dict(expected=[], style='spanish', fonts='bookman', title='ÖLMENY',
+         sections=[('Fatöl', [('Norrlands Guld', '40 cl', '69 kr'), ('Mariestads Export', '40 cl', '78 kr'), ('Poppels Poppelino Lager', '40 cl', '82 kr')]),
+                   ('Flaska', [('Nils Oscar God Lager', '33 cl', '69 kr'), ('Åbro Original', '33 cl', '59 kr'), ('Spendrups Premium', '33 cl', '62 kr')]),
+                   ('', [('Glutenfri öl finns, fråga personalen', None, '')])]),
 ]
 
 STYLES = {

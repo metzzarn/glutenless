@@ -42,8 +42,9 @@ ${lines.join('\n')}
     AndroidConfig.Manifest.ensureToolsAvailable(mod.modResults);
     const app = AndroidConfig.Manifest.getMainApplicationOrThrow(mod.modResults);
     AndroidConfig.Manifest.addMetaDataItemToMainApplication(app, 'com.google.mlkit.vision.DEPENDENCIES', 'ocr');
-    // Replaces expo-camera's "barcode_ui" (Google's code scanner screen, which
-    // the app never opens), so Play services doesn't download it.
+    // Replaces expo-camera's "barcode_ui" (Google's code scanner screen), which
+    // its manifest asks for even with its barcode scanner turned off in
+    // app.json, so Play services doesn't download it.
     const item = app['meta-data'].find((m) => m.$['android:name'] === 'com.google.mlkit.vision.DEPENDENCIES');
     item.$['tools:replace'] = 'android:value';
     return mod;

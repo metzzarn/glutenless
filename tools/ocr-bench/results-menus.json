@@ -1,0 +1,652 @@
+{
+  "Ambar Especial Sin Gluten - generated 15 centered.jpg": {
+    "ios-vision": {
+      "text": "Cervezas de Zaragoza\n\nAmbar Especial 2,30 €\n\nCaña o tercio\n\nAmbar 1900 2,90 €\n\nTercio\n\nAmbar Especial Sin Gluten 2,70 €\n\nTercio\n\nCruzcampo 2,10 €\n\nCaña",
+      "ms": 1108
+    },
+    "ios-app": {
+      "text": "Cervezas de Zaragoza\n\nAmbar Especial 2,30 €\n\nCaña o tercio\n\nAmbar 1900 2,90 €\n\nTercio\n\nAmbar Especial Sin Gluten 2,70 €\n\nTercio\n\nCruzcampo 2,10 €\n\nCaña",
+      "ms": 876
+    },
+    "mlkit": {
+      "text": "Cervezas de Zaragoza\n\nAmbar Especial 2,30 €\n\nCaña o tercio\n\nAmbar 1900 2,90 €\nTercio\n\nAmbar Especial Sin Gluten 2,70 €\nTercio\n\nCruzcampo 2,10€\n\nCaña",
+      "ms": 359
+    },
+    "app": {
+      "text": "Cervezas de Zaragoza\n\nAmbar Especial 2,30 €\n\nCaña o tercio\n\nAmbar 1900 2,90 €\n\nTercio\n\nAmbar Especial Sin Gluten 2,70 €\n\nTercio\n\nCruzcampo 2,10 €\n\nCaña",
+      "ms": 861
+    },
+    "ppocr-960": {
+      "text": "Cervezas de Zaragoza\nAmbar Especial 2,30 €\nCaña o tercio\nAmbar 1900 2,90 €\nTercio\nAmbar Especial Sin Gluten 2,70 €\nTercio\nCruzcampo 2,10 €\nCaña",
+      "ms": 359
+    },
+    "ppocr-1600": {
+      "text": "Cervezas de Zaragoza\nAmbar Especial 2,30 €\nCaña o tercio\nAmbar 1900 2,90 €\nTercio\nAmbar Especial Sin Gluten 2,70 €\nTercio\nCruzcampo 2,10 €\nCaña",
+      "ms": 682
+    }
+  },
+  "Daura Damm + Damm Daura Marzen - generated 16 restaurant.jpg": {
+    "ios-vision": {
+      "text": "Cerveses\n\n3,00\n\nEstrella Damm\nLa cervesa de Barcelona, 5,4%\nEstrella Damm Daura\nSense gluten, 5,4%\nDamm Daura Märzen\nSense gluten, 6,0%\n\n3,40\n\n3,60\n\nVoll-Damm Doble Malta\n7,2%\n\n3,60",
+      "ms": 820
+    },
+    "ios-app": {
+      "text": "Cerveses\n\n3,00\n\nEstrella Damm\nLa cervesa de Barcelona, 5,4%\nEstrella Damm Daura\nSense gluten, 5,4%\nDamm Daura Märzen\nSense gluten, 6,0%\n\n3,40\n\n3,60\n\nVoll-Damm Doble Malta\n7,2%\n\n3,60",
+      "ms": 904
+    },
+    "mlkit": {
+      "text": "Estrella Damm\nLa cervesa de Barcelona, 5,4%\n\nEstrella Damm Daura\nSense gluten, 5,4%\n\nDamm Daura Märzen\nSense gluten, 6,0%\n\nVoll-Damm Doble Malta\n\n7,2%\n\nCerveses\n\n3.00\n\n3,40\n\n3,60\n\n3,60",
+      "ms": 214
+    },
+    "app": {
+      "text": "Cerveses\n\nEstrella Damm\nLa cervesa de Barcelona, 5,4%\n\n3,00\n\n3,40\n\nEstrella Damm Daura\nSense gluten, 5,4%\n\n3,60\n\nDamm Daura Märzen\nSense gluten, 6,0%\n\n3,60\n\nVoll-Damm Doble Malta\n7,2%",
+      "ms": 725
+    },
+    "ppocr-960": {
+      "text": "Cerveses\nEstrella Damm\nLa cervesa de Barcelona, 5,4%\n3,00\nEstrella Damm Daura\nSense gluten, 5,4%\n3,40\nDamm Daura Märzen\nSense gluten, 6,0%\n3,60\nVoll-Damm Doble Malta\n7,2%\n3,60",
+      "ms": 424
+    },
+    "ppocr-1600": {
+      "text": "Cerveses\nEstrella Damm\nLa cervesa de Barcelona, 5,4%\n3,00\nEstrella Damm Daura\nSense gluten, 5,4%\n3,40\nDamm Daura Märzen\nSense gluten, 6,0%\n3,60\nVoll-Damm Doble Malta\n7,2%\n3,60",
+      "ms": 695
+    }
+  },
+  "Daura Damm - generated 08 spanish.jpg": {
+    "ios-vision": {
+      "text": "Cervezas\n\nBarril\nEstrella Damm (caña).\nVoll-Damm (tercio)\n\n2,50 €\n3,20 €\n\nBotella\n\nEstrella Damm\n33 cl\nDaura Damm.\nsin gluten 33 cl\nFree Damm 0,0\n\n2,80 €\n\n3,00 €\n\n2,80 €\n\n33 cl",
+      "ms": 1124
+    },
+    "ios-app": {
+      "text": "Cervezas\n\nBarril\nEstrella Damm (caña).\nVoll-Damm (tercio)\n\n2,50 €\n3,20 €\n\nBotella\n\nEstrella Damm\n33 cl\nDaura Damm.\nsin gluten 33 cl\nFree Damm 0,0\n\n2,80 €\n\n3,00 €\n\n2,80 €\n\n33 cl",
+      "ms": 1219
+    },
+    "mlkit": {
+      "text": "Barril\n\nEstrella Damm (caña)\n\nVoll-Damm (tercio)\n\nBotella\n\nEstrella Damm\n\n33 dl\n\nDaura Damm\nsin gluten 33 cl\n\nFree Damm 0,0\n\nCervezas\n\n33 d\n\n2,50 €\n\n3,20 €\n\n.2,80 €\n\n3,00 €\n\n2,80 €",
+      "ms": 237
+    },
+    "app": {
+      "text": "Cervezas\n\nBarril\nEstrella Damm (caña) ....\nVoll-Damm (tercio) ....\n\n... 2,50 €\n.... 3,20 €\n\nBotella\nEstrella Damm ..\n33 cl\nDaura Damm ..\nsin gluten 33 cl\nFree Damm 0,0 ......\n33 cl\n\n.….. 2,80 €\n\n... 3,00 €\n\n.... 2,80 €",
+      "ms": 876
+    },
+    "ppocr-960": {
+      "text": "Cervezas\nBarril\nEstrella Damm (caña).\n.. 2,50 €\nVoll-Damm (tercio) ...\n.. 3,20 €\nBotella\nEstrella Damm\n... 2,80 €\n33 cl\nDaura Damm\n... 3,00 €\nsin gluten 33 cl\nFree Damm 0,0 .\n.. 2,80 €\n33 cl",
+      "ms": 500
+    },
+    "ppocr-1600": {
+      "text": "Cervezas\nBarril\nEstrella Damm (caña) ....\n... 2,50 €\nVoll-Damm (tercio) ....\n.... 3,20 €\nBotella\nEstrella Damm ..\n.….. 2,80 €\n33 cl\nDaura Damm ..\n... 3,00 €\nsin gluten 33 cl\nFree Damm 0,0 ......\n.... 2,80 €\n33 cl",
+      "ms": 815
+    }
+  },
+  "Estrella Galicia Gluten Free - generated 12 spanish.jpg": {
+    "ios-vision": {
+      "text": "CERVEZAS GALLEGAS\n\n. 2,40 €\n\nEstrella Galicia Especial\nCaña\n1906 Reserva Especial\nBotella 33 cl\n\n3,10 €\n\n. 2,50 €\n\nEstrella Galicia 0,0\nBotella 25 cl\nEstrella Galicia Gluten Free ..\nBotella 33 cl\n\n2,90 €",
+      "ms": 827
+    },
+    "ios-app": {
+      "text": "CERVEZAS GALLEGAS\n\n. 2,40 €\n\nEstrella Galicia Especial\nCaña\n1906 Reserva Especial\nBotella 33 cl\n\n3,10 €\n\n. 2,50 €\n\nEstrella Galicia 0,0\nBotella 25 cl\nEstrella Galicia Gluten Free ..\nBotella 33 cl\n\n2,90 €",
+      "ms": 830
+    },
+    "mlkit": {
+      "text": "Estrella Galicia Especial\n\nCaña\n\n1906 Reserva Especial\n\nBotella 33 cd\n\nCERVEZAS GALLEGAS\n\nEstrella Galicia 0,0\n\nBotella 25 cl\n\nEstrella Galicia Gluten Free\n\nBotella 33 cl\n\n2.40 €\n\n3,10 €\n\n.2,50 €\n\n2.90 €",
+      "ms": 222
+    },
+    "app": {
+      "text": "CERVEZAS GALLEGAS\n\n...2,40 €\n\nEstrella Galicia Especial ....\nCaña\n1906 Reserva Especial .....\nBotella 33 cl\nEstrella Galicia 0,0 ...\nBotella 25 cl\nEstrella Galicia Gluten Free .....\nBotella 33 cl\n\n...3,10 €\n\n....2,50 €\n\n… 2,90 €",
+      "ms": 727
+    },
+    "ppocr-960": {
+      "text": "CERVEZAS GALLEGAS\n.. 2,40 €\nEstrella Galicia Especial .\n.. 3,10 €\nCaña\n1906 Reserva Especial .\nBotella 33 cl\n...2,50 €\nEstrella Galicia 0,0 ..\nBotella 25 cl\n.…. 2,90 €\nEstrella Galicia Gluten Free ..\nBotella 33 cl",
+      "ms": 429
+    },
+    "ppocr-1600": {
+      "text": "CERVEZAS GALLEGAS\n...2,40 €\nEstrella Galicia Especial ....\n...3,10 €\nCaña\n1906 Reserva Especial .....\nBotella 33 cl\n....2,50 €\nEstrella Galicia 0,0 ...\nBotella 25 cl\n… 2,90 €\nEstrella Galicia Gluten Free .....\nBotella 33 cl",
+      "ms": 673
+    }
+  },
+  "Gluten-Free Punk IPA + Vagabond Pale Ale - generated 11 chalk.jpg": {
+    "ios-vision": {
+      "text": "On tap\n\nBrewDog\nBrewDog Рunk IPA\nBrewDog Hazy Jane\nBrewDog Elvis Juice\n\n6.5\n\n6.5\n\n6.9\n\nCans\n\nBrewDog Punk IPA Gluten Free\n\nBrewDog Vagabond",
+      "ms": 1081
+    },
+    "ios-app": {
+      "text": "On tap\n\nBrewDog\nBrewDog Рunk IPA\nBrewDog Hazy Jane\nBrewDog Elvis Juice\n\n6.5\n\n6.5\n\n6.9\n\nCans\n\nBrewDog Punk IPA Gluten Free\n\nBrewDog Vagabond",
+      "ms": 1048
+    },
+    "mlkit": {
+      "text": "BrewDog\n\nBrewDog Punk 1PA\n\nBrewDog Hazy Jane\n\nBrewDog Elvis Iuice\n\nCans\n\nOn tap\n\nBrewDog Punk 1PA Gluten Free\n\nBrewDog Vagabond\n\n6.5\n\n6.5\n\n6.9\n\n5\n\n5",
+      "ms": 291
+    },
+    "app": {
+      "text": "On tap\n\nBrewDog\nBrewDog Punk IPA\nBrewDog Hazy Jane\nBrewDog Elvis Juice\n\n6.5\n6.5\n6.9\n\nCans\nBrewDog Punk IPA Gluten Free\nBrewDog Vagabond\n\n5\n5",
+      "ms": 833
+    },
+    "ppocr-960": {
+      "text": "On tap\nBrewDog\nBrewDog Punk IPA\n6.5\nBrewDog Hazy Jane\n6.5\nBrewDog Elvis Juice\n6.9\nCans\nBrewDog Punk IPA Gluten Free\nBrewDog Vagabond\n5\n5",
+      "ms": 432
+    },
+    "ppocr-1600": {
+      "text": "On tap\nBrewDog\nBrewDog Punk IPA\n6.5\nBrewDog Hazy Jane\n6.5\nBrewDog Elvis Juice\n6.9\nCans\nBrewDog Punk IPA Gluten Free\nBrewDog Vagabond\n5\n5",
+      "ms": 765
+    }
+  },
+  "Glutenberg IPA + Omission Lager - generated 02 chalk.jpg": {
+    "ios-vision": {
+      "text": "Beers today\n\nTaps\nBrooklyn Lager\nSierra Nevada Pale Ale\n\n6\n\n7\n\nGluten free\nGlutenberg IPA\nOmission Lager\n\n7\n\n6",
+      "ms": 781
+    },
+    "ios-app": {
+      "text": "Beers today\n\nTaps\nBrooklyn Lager\nSierra Nevada Pale Ale\n\n6\n\n7\n\nGluten free\nGlutenberg IPA\nOmission Lager\n\n7\n\n6",
+      "ms": 811
+    },
+    "mlkit": {
+      "text": "Taps\n\nBrooklyn Lager\n\nSierra Nevada Pale Ale\n\nGluten free\n\nGlutenberg IPA\n\nBeers today\n\nOmission Lager\n\n6\n\n7\n\n7\n\n6",
+      "ms": 251
+    },
+    "app": {
+      "text": "Beers today\n\nTaps\nBrooklyn Lager\nSierra Nevada Pale Ale\n\n6\n\n7\n\nGluten free\nGlutenberg IPA\nOmission Lager\n\n6",
+      "ms": 736
+    },
+    "ppocr-960": {
+      "text": "Beers today\nTaps\n6\nBrooklyn Lager\n7\nSierra Nevada Pale Ale\nGluten free\nGlutenberg IPA\n6\nOmission Lager",
+      "ms": 379
+    },
+    "ppocr-1600": {
+      "text": "Beers today\nTaps\n6\nBrooklyn Lager\n7\nSierra Nevada Pale Ale\nGluten free\nGlutenberg IPA\n6\nOmission Lager",
+      "ms": 663
+    }
+  },
+  "Greene King IPA Gluten Free + Old Speckled Hen Gluten Free - generated 13 pub.jpg": {
+    "ios-vision": {
+      "text": "THE KING'S HEAD\n\nCask Ales\nGreene King IPA\n\nBottles\n\n4.60\n\nGreene King IPA\nGluten Free\n500ml 4.1%\n\n3.6%\n\n5.00\n\nOld Speckled Hen\n5.0%\n\n5.10\n\nOld Speckled Hen\nGluten Free\n500ml 5.0%\n\n5.20\n\nAbbot Ale\n5.0%\n\n5.20",
+      "ms": 856
+    },
+    "ios-app": {
+      "text": "THE KING'S HEAD\n\nCask Ales\nGreene King IPA\n\nBottles\n\n4.60\n\nGreene King IPA\nGluten Free\n500ml 4.1%\n\n3.6%\n\n5.00\n\nOld Speckled Hen\n5.0%\n\n5.10\n\nOld Speckled Hen\nGluten Free\n500ml 5.0%\n\n5.20\n\nAbbot Ale\n5.0%\n\n5.20",
+      "ms": 848
+    },
+    "mlkit": {
+      "text": "Cask Ales\n\nGreene King IPA\n\n3.6%\n\nTHE KING'S HEAD\n\nOld Speckled Hen\n\n5.0%\n\nAbbot Ale\n\n5.0%\n\n4.60\n\n5.10\n\n5.20\n\nBottles\n\nGreene King IPA\n\nGluten Free\n\n500ml 4. 1%\n\nOld Speckled Hen\n\nGluten Free\n\n500ml 5.0%\n\n5.00\n\n5.20",
+      "ms": 265
+    },
+    "app": {
+      "text": "THE KING'S HEAD\n\nCask Ales\nGreene King IPA\n3.6%\nOld Speckled Hen\n5.0%\nAbbot Ale\n5.0%\n\nBottles\nGreene King IPA\nGluten Free\n500ml 4.1%\nOld Speckled Hen\nGluten Free\n500ml 5.0%\n\n4.60\n\n5.00\n\n5.10\n\n5.20\n\n5.20",
+      "ms": 822
+    },
+    "ppocr-960": {
+      "text": "THE KING'S HEAD\nCask Ales\nBottles\nGreene King IPA\n4.60\nGreene King IPA\n3.6%\nGluten Free\n5.00\n500ml 4.1%\nOld Speckled Hen\n5.10\n5.0%\nOld Speckled Hen\n5.20\nGluten Free\nAbbot Ale\n5.20\n500ml 5.0%\n5.0%",
+      "ms": 519
+    },
+    "ppocr-1600": {
+      "text": "THE KING'S HEAD\nCask Ales\nBottles\nGreene King IPA\n4.60\nGreene King IPA\n3.6%\nGluten Free\n5.00\n500ml 4.1%\nOld Speckled Hen\n5.10\n5.0%\nOld Speckled Hen\nGluten Free\n5.20\nAbbot Ale\n5.20\n500ml 5.0%\n5.0%",
+      "ms": 756
+    }
+  },
+  "Jubel Peach + Jubel Lemon + Laitilan Kukko Pils - generated 06 centered.jpg": {
+    "ios-vision": {
+      "text": "DRINKS\n\nBeer & Cider\nJubel Peach 5.5\n\ngluten free\n\nJubel Lemon 5.5\ngluten free\n\nLaitilan Kukko Pils 6\n\nAspall Cyder 5.5",
+      "ms": 755
+    },
+    "ios-app": {
+      "text": "DRINKS\n\nBeer & Cider\nJubel Peach 5.5\n\ngluten free\n\nJubel Lemon 5.5\ngluten free\n\nLaitilan Kukko Pils 6\n\nAspall Cyder 5.5",
+      "ms": 850
+    },
+    "mlkit": {
+      "text": "DRINKS\n\nBeer & Cider\n\nJubel Peach 5.5\ngluten free\n\nJubel Lemon 5.5\ngluten free\n\nLaitilan Kukko Pils 6\n\nAspall Cyder 5.5",
+      "ms": 214
+    },
+    "app": {
+      "text": "DRINKS\n\nBeer & Cider\nJubel Peach 5.5\n\ngluten free\n\nJubel Lemon 5.5\n\ngluten free\n\nLaitilan Kukko Pils 6\nAspall Cyder 5.5",
+      "ms": 585
+    },
+    "ppocr-960": {
+      "text": "DRINKS\nBeer & Cider\nJubel Peach 5.5\ngluten free\nJubel Lemon 5.5\ngluten free\nLaitilan Kukko Pils 6\nAspall Cyder 5.5",
+      "ms": 307
+    },
+    "ppocr-1600": {
+      "text": "DRINKS\nBeer & Cider\nJubel Peach 5.5\ngluten free\nJubel Lemon 5.5\ngluten free\nLaitilan Kukko Pils 6\nAspall Cyder 5.5",
+      "ms": 546
+    }
+  },
+  "Luz Gluten-Free Mexican Lager + London Lager Glutenfri + Poppels Hoppy Alcohol Free Pale Ale Glutenfri - generated 24 restaurant.jpg": {
+    "ios-vision": {
+      "text": "Öl & alkoholfritt\n\n79 kr\n\nOmnipollo Luz Gluten-Free Mexican Lager\nKrispig mexikansk lager, glutenfri, 4,5%\nPoppels London Lager\nMörk lager med toner av kola, 4,7%\nPoppels London Lager Glutenfri\nSamma mörka lager, glutenfri, 4,7%\nPistonhead Kustom Lager\nLjus lager, 5,3%\nPoppels Hoppy Alcohol Free Pale Ale Glutenfri\n\n75 kr\n\n75 kr\n\n72 kr\n\n55 kr\n\nAlkoholfri och glutenfri, 0,3%",
+      "ms": 1039
+    },
+    "ios-app": {
+      "text": "Öl & alkoholfritt\n\n79 kr\n\nOmnipollo Luz Gluten-Free Mexican Lager\nKrispig mexikansk lager, glutenfri, 4,5%\nPoppels London Lager\nMörk lager med toner av kola, 4,7%\nPoppels London Lager Glutenfri\nSamma mörka lager, glutenfri, 4,7%\nPistonhead Kustom Lager\nLjus lager, 5,3%\nPoppels Hoppy Alcohol Free Pale Ale Glutenfri\n\n75 kr\n\n75 kr\n\n72 kr\n\n55 kr\n\nAlkoholfri och glutenfri, 0,3%",
+      "ms": 936
+    },
+    "mlkit": {
+      "text": "Öl & alkoholfritt\n\nOmnipollo Luz Gluten-Free Mexican Lager\n\nKrispig mexikansk lager, glutenfri, 4,5%\n\nPoppels London Lager\n\nMörk lager med toner av kola, 4,7%\n\nPoppels London Lager Glutenfri\nSamna mörka lager, glutenfri, 4,7%\n\nPistonhead Kustom Lager\nLjus lager, 5,3%\n\nPoppels Hoppy Alcohol Free Pale Ale Glutenfri\nAlkoholfri och glutenfri, 0,3%\n\n79 kr\n\n75 kr\n\n75 kr\n\n72 kr\n\n55 kr",
+      "ms": 235
+    },
+    "app": {
+      "text": "Ö1 & alkoholfritt\n\n79 kr\n\nOmnipollo Luz Gluten-Free Mexican Lager\nKrispig mexikansk lager, glutenfri, 4,5%\nPoppels London Lager\nMörk lager med toner av kola, 4,7%\nPoppels London Lager Glutenfri\nSamma mörka lager, glutenfri, 4,7%\nPistonhead Kustom Lager\nLjus lager, 5,3%\nPoppels Hoppy Alcohol Free Pale Ale Glutenfri\nAlkoholfri och glutenfri, 0,3%\n\n75 kr\n\n75 kr\n\n72 kr\n\n55 kr",
+      "ms": 982
+    },
+    "ppocr-960": {
+      "text": "Ö1 & alkoholfritt\nOmnipollo Luz Gluten-Free Mexican Lager\nKrispig mexikansk lager, glutenfri, 4,5%\n79 kr\nPoppels London Lager\nMörk lager med toner av kola, 4,7%\n75 kr\nPoppels London Lager Glutenfri\nSamma mörka lager, glutenfri, 4,7%\n75 kr\nPistonhead Kustom Lager\nLjus lager, 5,3%\n72 kr\nPoppels Hoppy Alcohol Free Pale Ale Glutenfri\nAlkoholfri och glutenfri, 0,3%\n55 kr",
+      "ms": 572
+    },
+    "ppocr-1600": {
+      "text": "Ö1 & alkoholfritt\nOmnipollo Luz Gluten-Free Mexican Lager\nKrispig mexikansk lager, glutenfri, 4,5%\n79 kr\nPoppels London Lager\nMörk lager med toner av kola, 4,7%\n75 kr\nPoppels London Lager Glutenfri\nSamma mörka lager, glutenfri, 4,7%\n75 kr\nPistonhead Kustom Lager\nLjus lager, 5,3%\n72 kr\nPoppels Hoppy Alcohol Free Pale Ale Glutenfri\nAlkoholfri och glutenfri, 0,3%\n55 kr",
+      "ms": 904
+    }
+  },
+  "Mahou Cinco Estrellas Sin Gluten + Cruzcampo Especial Sin Gluten - generated 03 spanish.jpg": {
+    "ios-vision": {
+      "text": "CERVEZAS\n\nBotellines\nAlhambra Reserva 1925 ....\n\n... 3,20 €\n\n33 cl\nMahou Cinco Estrellas Sin Gluten\n33 cl\nCruzcampo Especial Sin Gluten ....\n\n2,90 €\n\n... 2,80 €\n\n33 cl\nCoronita .......\n35,5 cl\n\n2,90 €",
+      "ms": 881
+    },
+    "ios-app": {
+      "text": "CERVEZAS\n\nBotellines\nAlhambra Reserva 1925 ....\n\n... 3,20 €\n\n33 cl\nMahou Cinco Estrellas Sin Gluten\n33 cl\nCruzcampo Especial Sin Gluten ....\n\n2,90 €\n\n... 2,80 €\n\n33 cl\nCoronita .......\n35,5 cl\n\n2,90 €",
+      "ms": 908
+    },
+    "mlkit": {
+      "text": "Botellines\n\nAlhambra Reserva 1925\n\n33 cl\n\nMahou Cinco Estrellas Sin Gluten\n\n33 cl\n\nCERVEZAS\n\nCruzcampo Especial Sin Gluten\n\n33 cl\n\nCoronita\n35,5 d\n\n3.20 €\n\n2.90 €\n\n2,80 €\n\n.2,90 €",
+      "ms": 245
+    },
+    "app": {
+      "text": "CERVEZAS\n\nBotellines\nAlhambra Reserva 1925\n33 cl\nMahou Cinco Estrellas Sin Gluten ...\n33 cl\nCruzcampo Especial Sin Gluten ..\n33 cl\nCoronita.\n35,5 cl\n\n... 3,20 €\n\n... 2,90 €\n\n... 2,80 €\n\n....2,90 €",
+      "ms": 814
+    },
+    "ppocr-960": {
+      "text": "CERVEZAS\nBotellines\nAlhambra Reserva 1925.\n33 cl\n.. 3,20 €\nMahou Cinco Estrellas Sin Gluten ..\n33 cl\n... 2,90 €\nCruzcampo Especial Sin Gluten ..\n33 cl\n.. 2,80 €\nCoronita ...\n35,5 cl\n.2,90 €",
+      "ms": 467
+    },
+    "ppocr-1600": {
+      "text": "CERVEZAS\nBotellines\nAlhambra Reserva 1925\n33 cl\n... 3,20 €\nMahou Cinco Estrellas Sin Gluten ...\n33 cl\n... 2,90 €\nCruzcampo Especial Sin Gluten ..\n33 cl\n... 2,80 €\nCoronita.\n35,5 cl\n....2,90 €",
+      "ms": 850
+    }
+  },
+  "Mongozo Premium Pilsener + Brunehaut Bio Blonde + Lakefront New Grist - generated 05 table.jpg": {
+    "ios-vision": {
+      "text": "BOTTLED BEER\n\nHeineken\nLeffe Blonde\nMongozo Premium Pilsener\nBrunehaut Bio Blonde\nLakefront New Grist\nDuvel\n\n4.80\n5.90\n5.50\n6.20\n6.00\n6.90\n\nLager / 5.0% / 330ml\nAbbey / 6.6% / 330ml\nPilsner GF / 5.0% / 330ml\nBlonde GF /6.5%| 330ml\nSorghum GF | 5.1% / 355ml\nStrong golden / 8.5% | 330ml",
+      "ms": 867
+    },
+    "ios-app": {
+      "text": "BOTTLED BEER\n\nHeineken\nLeffe Blonde\nMongozo Premium Pilsener\nBrunehaut Bio Blonde\nLakefront New Grist\nDuvel\n\n4.80\n5.90\n5.50\n6.20\n6.00\n6.90\n\nLager / 5.0% / 330ml\nAbbey / 6.6% / 330ml\nPilsner GF / 5.0% / 330ml\nBlonde GF /6.5%| 330ml\nSorghum GF | 5.1% / 355ml\nStrong golden / 8.5% | 330ml",
+      "ms": 880
+    },
+    "mlkit": {
+      "text": "Heineken\n\nLeffe Blonde\n\nBOTTLED BEER\n\nMongozo Premium Pilsener\n\nBrunehaut Bio Blonde\n\nLakefront New Grist\nDuvel\n\nLager | 5.0% | 330ml\n\nAbbey | 6.6% | 330ml\nPilsner GF| 5.0% |330ml\n\nBlonde GF| 6. 5% | 330ml\n\nSorghum GF | 5.1% | 355ml\n\nStrong golden | 8.5% | 330ml\n\n4.80\n\n5.90\n\n5.50\n\n6.20\n\n6.00\n\n6.90",
+      "ms": 263
+    },
+    "app": {
+      "text": "BOTTLED BEER\n\nHeineken\nLeffe Blonde\nMongozo Premium Pilsener\nBrunehaut Bio Blonde\nLakefront New Grist\nDuvel\n\n4.80\n5.90\n5.50\n6.20\n6.00\n6.90\n\nLager|5.0% |330ml\nAbbey|6.6%|330ml\nPilsner GF| 5.0% | 330ml\nBlonde GF |6.5% | 330ml\nSorghum GF | 5.1% | 355ml\nStrong golden | 8.5% | 330ml",
+      "ms": 856
+    },
+    "ppocr-960": {
+      "text": "BOTTLED BEER\n4.80\nLager |5.0%|330ml\n5.90\nHeineken\nAbbey|6.6%|330ml\n5.50\nLeffe Blonde\nPilsner GF | 5.0% | 330ml\nMongozo Premium Pilsener\n6.20\nBlonde GF | 6.5% | 330ml\nBrunehaut Bio Blonde\n6.00\nSorghum GF | 5.1% | 355ml\nLakefront New Grist\n6.90\nStrong golden | 8.5% | 330ml\nDuvel",
+      "ms": 539
+    },
+    "ppocr-1600": {
+      "text": "BOTTLED BEER\n4.80\nLager|5.0% |330ml\n5.90\nHeineken\nAbbey|6.6%|330ml\nLeffe Blonde\n5.50\nPilsner GF| 5.0% | 330ml\nMongozo Premium Pilsener\n6.20\nBlonde GF |6.5% | 330ml\nBrunehaut Bio Blonde\n6.00\nSorghum GF | 5.1% | 355ml\nLakefront New Grist\n6.90\nStrong golden | 8.5% | 330ml\nDuvel",
+      "ms": 803
+    }
+  },
+  "Peroni Nastro Azzurro Gluten Free + Vagabond Pale Ale - generated 01 pub.jpg": {
+    "ios-vision": {
+      "text": "THE CROWN & ANCHOR\n\nBOTTLES & CANS\n\nON DRAUGHT\n\nPeroni Nastro Azzurro\nGluten Free\n330ml 5.1%\n\n5.90\n\nGuinness\nIrish stout 4.2%\n\n5.20\n\n6.40\n\nCamden Hells\nLager 4.6%\n\nBrewdog Vagabond\nPale Ale\nGluten free 330ml 4.5%\n\n5.50\n\nBeavertown Neck Oil\nSession IPA 4.3%\n\n6.70\n\n5.00\n\nCorona Extra\n330ml 4.5%",
+      "ms": 867
+    },
+    "ios-app": {
+      "text": "THE CROWN & ANCHOR\n\nBOTTLES & CANS\n\nON DRAUGHT\n\nPeroni Nastro Azzurro\nGluten Free\n330ml 5.1%\n\n5.90\n\nGuinness\nIrish stout 4.2%\n\n5.20\n\n6.40\n\nCamden Hells\nLager 4.6%\n\nBrewdog Vagabond\nPale Ale\nGluten free 330ml 4.5%\n\n5.50\n\nBeavertown Neck Oil\nSession IPA 4.3%\n\n6.70\n\n5.00\n\nCorona Extra\n330ml 4.5%",
+      "ms": 912
+    },
+    "mlkit": {
+      "text": "THE CROWN & ANCHOR\n\nON DRAUGHT\n\nGuinness\n\nIrish stout 4.2%\n\nCamden Hells\nLager 4.6%\n\nBeavertown Neck Oil\n\nSession IPA 4.3%\n\n5.90\n\n6.40\n\n6.70\n\nBOTTLES & CANS\n\nPeroni Nastro Azzurro\nGluten Free\n\n330ml 5. 1%\n\nBrewdog Vagabond\n\nPale Ale\n\nGluten free 330ml 4.5%\n\nCorona Extra\n\n330ml 4.5%\n\n5.20\n\n5.50\n\n5.00",
+      "ms": 247
+    },
+    "app": {
+      "text": "THE CROWN & ANCHOR\n\nBOTTLES & CANS\nPeroni Nastro Azzurro\nGluten Free\n330ml 5.1%\nBrewdog Vagabond\nPale Ale\nGluten free 330ml 4.5%\n\nON DRAUGHT\n\n5.90\n\nGuinness\nIrish stout 4.2%\n\n5.20\n\n6.40\n\nCamden Hells\nLager 4.6%\nBeavertown Neck Oil\nSession IPA 4.3%\n\n5.50\n\n6.70\n\n5.00\n\nCorona Extra\n330ml 4.5%",
+      "ms": 990
+    },
+    "ppocr-960": {
+      "text": "THE CROWN & ANCHOR\nBOTTLES & CANS\nON DRAUGHT\nPeroni Nastro Azzurro\nGuinness\n5.90\n5.20\nGluten Free\nIrish stout 4.2%\n330ml 5.1%\nCamden Hells\n6.40\nLager 4.6%\nBrewdog Vagabond\nPale Ale\n5.50\nBeavertown Neck Oil\n6.70\nGluten free 330ml 4.5%\nSession IPA 4.3%\n5.00\nCorona Extra\n330ml 4.5%",
+      "ms": 617
+    },
+    "ppocr-1600": {
+      "text": "THE CROWN & ANCHOR\nBOTTLES & CANS\nON DRAUGHT\nPeroni Nastro Azzurro\nGuinness\n5.90\n5.20\nGluten Free\nIrish stout 4.2%\n330ml 5.1%\n6.40\nCamden Hells\nBrewdog Vagabond\nLager 4.6%\nPale Ale\n5.50\nBeavertown Neck Oil\n6.70\nGluten free 330ml 4.5%\nSession IPA 4.3%\n5.00\nCorona Extra\n330ml 4.5%",
+      "ms": 886
+    }
+  },
+  "Peroni Nastro Azzurro Gluten Free - generated 09 restaurant.jpg": {
+    "ios-vision": {
+      "text": "Birre\n\nPeroni Nastro Azzurro\nDraught lager, 5.0%\nPeroni Gran Riserva Rossa\nRed lager, 5.2%\nPeroni Nastro Azzurro 0.0%\nAlcohol free\n\n5.50\n\n6.20\n\n4.50\n\n5.50\n\nPeroni Gluten Free\nGluten free lager, 5.1%",
+      "ms": 826
+    },
+    "ios-app": {
+      "text": "Birre\n\nPeroni Nastro Azzurro\nDraught lager, 5.0%\nPeroni Gran Riserva Rossa\nRed lager, 5.2%\nPeroni Nastro Azzurro 0.0%\nAlcohol free\n\n5.50\n\n6.20\n\n4.50\n\n5.50\n\nPeroni Gluten Free\nGluten free lager, 5.1%",
+      "ms": 862
+    },
+    "mlkit": {
+      "text": "Peroni Nastro Azzurro\nDraught lager, 5.0%\n\nPeroni Gran Riserva Rossa\nRed lager, 5.2%\n\nPeroni Nastro Azzurro 0.0%\n\nAlcohol free\n\nPeroni Gluten Free\nGluten free lager, 5.1%\n\nBirre\n\n5.50\n\n6.20\n\n4.50\n\n5.50",
+      "ms": 203
+    },
+    "app": {
+      "text": "Birre\n\nPeroni Nastro Azzurro\nDraught lager, 5.0%\n\n5.50\n\nPeroni Gran Riserva Rossa\nRed lager, 5.2%\n\n6.20\n\n4.50\n\nPeroni Nastro Azzurro 0.0%\nAlcohol free\n\n5.50\n\nPeroni Gluten Free\nGluten free lager, 5.1%",
+      "ms": 773
+    },
+    "ppocr-960": {
+      "text": "Birre\nPeroni Nastro Azzurro\n5.50\nDraught lager, 5.0%\nPeroni Gran Riserva Rossa\n6.20\nRed lager, 5.2%\nPeroni Nastro Azzurro 0.0%\n4.50\nAlcohol free\nPeroni Gluten Free\n5.50\nGluten free lager, 5.1%",
+      "ms": 434
+    },
+    "ppocr-1600": {
+      "text": "Birre\nPeroni Nastro Azzurro\n5.50\nDraught lager, 5.0%\nPeroni Gran Riserva Rossa\n6.20\nRed lager, 5.2%\nPeroni Nastro Azzurro 0.0%\n4.50\nAlcohol free\nPeroni Gluten Free\n5.50\nGluten free lager, 5.1%",
+      "ms": 713
+    }
+  },
+  "Poppelino Lager Glutenfri + Nils Oscar India Ale Glutenfri - generated 21 pub.jpg": {
+    "ios-vision": {
+      "text": "ÖL\n\nFatöl\nMariestads Export\n40 cl\nPilsner Urquell\n40 cl\nPoppels Poppelino\nLager\n40 cl\n\nFlasköl\nPoppels Poppelino\nLager Glutenfri\n33 cl\nNils Oscar God Lager\n33 cl\nNils Oscar India Ale\nGlutenfri\n33 cl\n\n78 kr\n\n72 kr\n\n84 kr\n\n69 kr\n\n82 kr\n\n76 kr",
+      "ms": 859
+    },
+    "ios-app": {
+      "text": "ÖL\n\nFatöl\nMariestads Export\n40 cl\nPilsner Urquell\n40 cl\nPoppels Poppelino\nLager\n40 cl\n\nFlasköl\nPoppels Poppelino\nLager Glutenfri\n33 cl\nNils Oscar God Lager\n33 cl\nNils Oscar India Ale\nGlutenfri\n33 cl\n\n78 kr\n\n72 kr\n\n84 kr\n\n69 kr\n\n82 kr\n\n76 kr",
+      "ms": 901
+    },
+    "mlkit": {
+      "text": "Fatöl\n\nMariestads Export\n40 cl\n\nPilsner Urquell\n\n40 cl\n\nPoppels Poppelino\nLager\n\n40 cl\n\nÖL\n\n78 kr\n\n84 kr\n\n82 kr\n\nFlasköl\n\nPoppels Poppelino\nLager Glutenfri\n\n33 d\n\nNils Oscar God Lager 69 kr\n\n33 cl\n\nNils Oscar India Ale\nGlutenfri\n\n72 kr\n\n33 d\n\n76 kr",
+      "ms": 181
+    },
+    "app": {
+      "text": "ÖL\n\nFatöl\nMariestads Export\n40 cl\nPilsner Urquell\n40 cl\nPoppels Poppelino\nLager\n40 cl\n\nFlasköl\nPoppels Poppelino\nLager Glutenfri\n33 cl\nNils Oscar God Lager\n33 cl\nNils Oscar India Ale\nGlutenfri\n33 cl\n\n78 kr\n\n72 kr\n\n84 kr\n\n69 kr\n\n82 kr\n\n76 kr",
+      "ms": 962
+    },
+    "ppocr-960": {
+      "text": "ÖL\nFatöl\nMariestads Export\nFlasköl\n40 cl\n78 kr\nPoppels Poppelino\nPilsner Urquell\nLager Glutenfri\n40 cl\n84 kr\n33 cl\n72 kr\nPoppels Poppelino\nNils Oscar God Lager\nLager\n33 cl\nr 69 kr\n40 cl\n82 kr\nNils Oscar India Ale\nGlutenfri\n33 cl\n76 kr",
+      "ms": 622
+    },
+    "ppocr-1600": {
+      "text": "ÖL\nFatöl\nMariestads Export\nFlasköl\n40 cl\n78 kr\nPoppels Poppelino\nPilsner Urquell\nLager Glutenfri\n40 cl\n84 kr\n33 cl\n72 kr\nPoppels Poppelino\nNils Oscar God Lager\nLager\n33 cl\n69 kr\n40 cl\n82 kr\nNils Oscar India Ale\nGlutenfri\n33 cl\n76 kr",
+      "ms": 872
+    }
+  },
+  "San Miguel Gluten Free + Mahou Cinco Estrellas Sin Gluten - generated 14 table.jpg": {
+    "ios-vision": {
+      "text": "CERVEZAS\n\n2,60\n2,40\n2,80\n2,20\n2,80\n\ntercio\n\nSan Miguel Especial\nSan Miguel 0,0\nSan Miguel Gluten FIee\nMahou Cinco Estrellas\nMahou Cinco Estrellas Sin Gleutien\n\ntercio\n\ntercio\n\ncaña",
+      "ms": 874
+    },
+    "ios-app": {
+      "text": "CERVEZAS\n\n2,60\n2,40\n2,80\n2,20\n2,80\n\ntercio\n\nSan Miguel Especial\nSan Miguel 0,0\nSan Miguel Gluten FIee\nMahou Cinco Estrellas\nMahou Cinco Estrellas Sin Gleutien\n\ntercio\n\ntercio\n\ncaña",
+      "ms": 931
+    },
+    "mlkit": {
+      "text": "CERVEZAS\n\nSan Miguel Especial\n\nSan Miguel 0,0\n\nSan Miguel Gluten Free\n\nMahou Cinco Estrellas\n\ntercio\n\ntercio\n\ntercio\n\ncaña\n\nMahou Cinco Estrellas Sin Geutien\n\n2,60\n\n2,40\n\n2,80\n\n2,20\n\n2,80",
+      "ms": 230
+    },
+    "app": {
+      "text": "CERVEZAS\n\n2,60\n2,40\n2,80\n2,20\n2,80\n\nSan Miguel Especial\nSan Miguel 0,0\nSan Miguel Gluten Free\nMahou Cinco Estrellas\nMahou Cinco Estrellas Sin Gtlutien\n\ntercio\ntercio\ntercio\ncaña",
+      "ms": 752
+    },
+    "ppocr-960": {
+      "text": "CERVEZAS\n2,60\ntercio\nSan Miguel Especial\n2,40\ntercio\nSan Miguel 0,0\n2,80\ntercio\nSan Miguel Gluten Free\n2,20\nMahou Cinco Estrellas\ncaña\n2,80\nMahou Cinco Estrellas Sin Gtleution",
+      "ms": 473
+    },
+    "ppocr-1600": {
+      "text": "CERVEZAS\n2,60\ntercio\nSan Miguel Especial\n2,40\ntercio\nSan Miguel 0,0\n2,80\ntercio\nSan Miguel Gluten Free\n2,20\ncaña\nMahou Cinco Estrellas\n2,80\nMahou Cinco Estrellas Sin Gtlutien",
+      "ms": 664
+    }
+  },
+  "Stella Artois Gluten Free - generated 04 restaurant.jpg": {
+    "ios-vision": {
+      "text": "Beer\n\n6.00\n\nAsahi Super Dry\nCrisp Japanese rice lager, 5.2%\nBirra Moretti\nItalian lager with a malty finish, 4.6%\nStella Artois Gluten Free\nThe Belgian pilsner, brewed to be gluten free, 4.6%\nErdinger Weissbier\nBavarian wheat beer, 5.3%\n\n5.80\n\n5.80\n\n6.20",
+      "ms": 868
+    },
+    "ios-app": {
+      "text": "Beer\n\n6.00\n\nAsahi Super Dry\nCrisp Japanese rice lager, 5.2%\nBirra Moretti\nItalian lager with a malty finish, 4.6%\nStella Artois Gluten Free\nThe Belgian pilsner, brewed to be gluten free, 4.6%\nErdinger Weissbier\nBavarian wheat beer, 5.3%\n\n5.80\n\n5.80\n\n6.20",
+      "ms": 894
+    },
+    "mlkit": {
+      "text": "Asahi Super Dry\n\nCrisp Japanese rice lager, 5.2%\n\nBirra Moretti\n\nItalian lager with a malty finish, 4.6%\n\nStella Artois Gluten Free\n\nThe Belgian pilsner, brewed to be gluten free, 4.6%\n\nErdinger Weissbier\n\nBeer\n\nBavarian wheat beer, 5.3%\n\n6.00\n\n5.80\n\n5.80\n\n6.20",
+      "ms": 275
+    },
+    "app": {
+      "text": "Beer\n\n6.00\n\nAsahi Super Dry\nCrisp Japanese rice lager, 5.2%\nBirra Moretti\nItalian lager with a malty finish, 4.6%\n\n5.80\n\n5.80\n\nStella Artois Gluten Free\nThe Belgian pilsner, brewed to be gluten free, 4.6%\nErdinger Weissbier\nBavarian wheat beer, 5.3%\n\n6.20",
+      "ms": 790
+    },
+    "ppocr-960": {
+      "text": "Beer\nAsahi Super Dry\nCrisp Japanese rice lager, 5.2%\n6.00\nBirra Moretti\nItalian lager with a malty finish, 4.6%\n5.80\nStella Artois Gluten Free\nThe Belgian pilsner, brewed to be gluten free, 4.6%\n5.80\nErdinger Weissbier\nBavarian wheat beer, 5.3%\n6.20",
+      "ms": 469
+    },
+    "ppocr-1600": {
+      "text": "Beer\nAsahi Super Dry\nCrisp Japanese rice lager, 5.2%\n6.00\nBirra Moretti\nItalian lager with a malty finish, 4.6%\n5.80\nStella Artois Gluten Free\nThe Belgian pilsner, brewed to be gluten free, 4.6%\n5.80\nErdinger Weissbier\nBavarian wheat beer, 5.3%\n6.20",
+      "ms": 753
+    }
+  },
+  "Stella Artois Gluten Free - generated 10 table.jpg": {
+    "ios-vision": {
+      "text": "BELGIAN BEERS\n\n6.20\n5.40\n6.60\n5.90\n\nStella Artois\nStella Artois Gluten Free\n\nPilsner | 4.6% | Pint\nPilsner |4.6%|330ml\nWit | 4.9% | Pint\nAbbey | 6.5% | 330ml\n\nHoegaarden\n\nLeffe Brune",
+      "ms": 821
+    },
+    "ios-app": {
+      "text": "BELGIAN BEERS\n\n6.20\n5.40\n6.60\n5.90\n\nStella Artois\nStella Artois Gluten Free\n\nPilsner | 4.6% | Pint\nPilsner |4.6%|330ml\nWit | 4.9% | Pint\nAbbey | 6.5% | 330ml\n\nHoegaarden\n\nLeffe Brune",
+      "ms": 840
+    },
+    "mlkit": {
+      "text": "Stella Artois\n\nStella Artois Gluten Free\n\nHoegaarden\n\nBELGIAN BEERS\n\nLeffe Brune\n\nPilsner | 4.6% | Pint\n\nPilsner |4.6% | 330ml\n\nWit | 4.9%|\n\n| Pint\n\nAbbey | 6.5% | 330ml\n\n6.20\n\n5.40\n\n6.60\n\n5.90",
+      "ms": 207
+    },
+    "app": {
+      "text": "BELGIAN BEERS\n\n6.20\n5.40\n6.60\n5.90\n\nPilsner | 4.6% | Pint\nPilsner | 4.6% | 330ml\nWit | 4.9% | Pint\nAbbey | 6.5% | 330ml\n\nStella Artois\nStella Artois Gluten Free\nHoegaarden\nLeffe Brune",
+      "ms": 607
+    },
+    "ppocr-960": {
+      "text": "BELGIAN BEERS\n6.20\nPilsner | 4.6% | Pint\n5.40\nPilsner | 4.6% | 330ml\nStella Artois\n6.60\nStella Artois Gluten Free\nWit | 4.9% | Pint\n5.90\nAbbey | 6.5% | 330ml\nHoegaarden\nLeffe Brune",
+      "ms": 370
+    },
+    "ppocr-1600": {
+      "text": "BELGIAN BEERS\n6.20\nPilsner | 4.6% | Pint\n5.40\nPilsner | 4.6% | 330ml\nStella Artois\n6.60\nStella Artois Gluten Free\nWit | 4.9% | Pint\n5.90\nAbbey | 6.5% | 330ml\nHoegaarden\nLeffe Brune",
+      "ms": 558
+    }
+  },
+  "Stellaris Gluten-Free Pilsner - generated 07 pub.jpg": {
+    "ios-vision": {
+      "text": "ÖL / BEER\n\nFat / Draught\nMariestads Export\n\nFlaska / Bottle\n\n79 kr\n\nOmnipollo Stellaris\nGluten-Free Pilsner\n33 cl\nSofiero Original\n33 cl\n\n40 cl\n\n79 kr\n\nOmnipollo Zodiak IPA\n\n95 kr\n\n59 kr\n\n40 c/",
+      "ms": 974
+    },
+    "ios-app": {
+      "text": "ÖL / BEER\n\nFat / Draught\nMariestads Export\n\nFlaska / Bottle\n\n79 kr\n\nOmnipollo Stellaris\nGluten-Free Pilsner\n33 cl\nSofiero Original\n33 cl\n\n40 cl\n\n79 kr\n\nOmnipollo Zodiak IPA\n\n95 kr\n\n59 kr\n\n40 c/",
+      "ms": 887
+    },
+    "mlkit": {
+      "text": "Fat / Draught\nMariestads Export\n\n40 cl\n\nOmnipollo Zodiak IPA\n\n40 cl\n\nÖLI BEER\n\n79 kr\n\n95 kr\n\nFlaska Bottle\n\nOmnipollo Stellaris\nGluten-Free Pilsner\n\n33 cl\n\nSofiero Original\n33 cl\n\n79 kr\n\n59 kr",
+      "ms": 260
+    },
+    "app": {
+      "text": "ÖL/BEER\n\nFat / Draught\nMariestads Export\n40 cl\nOmnipollo Zodiak IPA\n40 cl\n\nFlaska / Bottle\nOmnipollo Stellaris\nGluten-Free Pilsner\n33 cl\nSofiero Original\n33 cl\n\n79 kr\n\n79 kr\n\n95 kr\n\n59 kr",
+      "ms": 728
+    },
+    "ppocr-960": {
+      "text": "ÖLIBEER\nFat / Draught\nFlaska / Bottle\nMariestads Export\n79 kr\nOmnipollo Stellaris\n40 cl\nGluten-Free Pilsner\n79 kr\nOmnipollo Zodiak IPA\n33 cl\n95 kr\n40 cl\nSofiero Original\n59 kr\n33 cl",
+      "ms": 456
+    },
+    "ppocr-1600": {
+      "text": "ÖL/BEER\nFat / Draught\nFlaska / Bottle\nMariestads Export\n79 kr\nOmnipollo Stellaris\n40 cl\nGluten-Free Pilsner\n79 kr\nOmnipollo Zodiak IPA\n33 cl\n95 kr\n40 cl\nSofiero Original\n59 kr\n33 cl",
+      "ms": 681
+    }
+  },
+  "Stigbergets Whispering Pines + Brewski Sansa - generated 22 chalk.jpg": {
+    "ios-vision": {
+      "text": "Dagens öl\n\nPå fat\nStigbergets West Coast IPA\nStigbergets Whispering Pines\nBrewski Mango Feelings\n\n89\n\n92\n\n95\n\nGlutenfritt\nBrewski Sansa\n\n89",
+      "ms": 927
+    },
+    "ios-app": {
+      "text": "Dagens öl\n\nPå fat\nStigbergets West Coast IPA\nStigbergets Whispering Pines\nBrewski Mango Feelings\n\n89\n\n92\n\n95\n\nGlutenfritt\nBrewski Sansa\n\n89",
+      "ms": 871
+    },
+    "mlkit": {
+      "text": "På fat\n\nStigbergets West Coast 1PA\n\nStigbergets Whispering Pines\n\nBrewski Mango Feelings\n\nDagens öl\n\nGlutenfritt\n\nBrewski Sansa\n\n89\n\n92\n\n95\n\n89",
+      "ms": 319
+    },
+    "app": {
+      "text": "Dagens öl\n\nPå fat\nStigbergets West Coast IPA\nStigbergets Whispering Pines\nBrewski Mango Feelings\n\n89\n92\n95\n\nGlutenfritt\nBrewski Sansa\n\n89",
+      "ms": 799
+    },
+    "ppocr-960": {
+      "text": "Dagens öl\nPå fat\n89\nStigbergets West Coast IPA\n92\nStigbergets Whispering Pines\n95\nBrewski Mango Feelings\nGlutenfritt\n89\nBrewski Sansa",
+      "ms": 414
+    },
+    "ppocr-1600": {
+      "text": "Dagens öl\nPå fat\n89\nStigbergets West Coast IPA\n92\nStigbergets Whispering Pines\n95\nBrewski Mango Feelings\nGlutenfritt\n89\nBrewski Sansa",
+      "ms": 811
+    }
+  },
+  "none - generated 17 spanish.jpg": {
+    "ios-vision": {
+      "text": "Cervezas\n\n2,50 €\n\nEstrella Damm ......\n\nсаña\n\n3,20 €\n\nVoll-Damm .....\ntercio\n\n2,40 €\n\nEstrella Galicia ...\n\nсaña\n\n2,80 €\n\nMahou Cinco Estrellas\n\ntercio\n\n2,60 €\n\nAmbar Especial ..\n\ntercio\n\n2,10 €\n\nCruzcampo .....\nсаñа",
+      "ms": 1117
+    },
+    "ios-app": {
+      "text": "Cervezas\n\n2,50 €\n\nEstrella Damm ......\n\nсаña\n\n3,20 €\n\nVoll-Damm .....\ntercio\n\n2,40 €\n\nEstrella Galicia ...\n\nсaña\n\n2,80 €\n\nMahou Cinco Estrellas\n\ntercio\n\n2,60 €\n\nAmbar Especial ..\n\ntercio\n\n2,10 €\n\nCruzcampo .....\nсаñа",
+      "ms": 1154
+    },
+    "mlkit": {
+      "text": "Estrella Damm\n\ncaña\n\nVoll-Damm\n\ntercio\n\nEstrella Galicia\n\ncaña\n\nMahou Cinco Estrellas\n\ntercio\n\nAmbar Especial\n\ntercio\n\nCruzcampo\n\nCervezas\n\ncaña\n\n2,50 €\n\n3,20 €\n\n.2,40 €\n\n2,80 €\n\n..2,60 €\n\n.2,10€",
+      "ms": 253
+    },
+    "app": {
+      "text": "Cervezas\n\n....2,50 €\n\nEstrella Damm ..\ncaña\nVoll-Damm ...\ntercio\nEstrella Galicia ....\ncaña\nMahou Cinco Estrellas .....\ntercio\nAmbar Especial .......\ntercio\nCruzcampo ......\ncaña\n\n....3,20€\n\n....2,40 €\n\n... 2,80 €\n\n....2,60€\n\n.... 2,10 €",
+      "ms": 959
+    },
+    "ppocr-960": {
+      "text": "Cervezas\n...2,50€\nEstrella Damm .\ncaña\n..3,20 €\nVoll-Damm ...\ntercio\n..2,40 €\nEstrella Galicia ...\ncaña\n... 2,80 €\nMahou Cinco Estrellas ..\ntercio\n.….2,60 €\nAmbar Especial ..\ntercio\n... 2,10 €\nCruzcampo ..\ncaña",
+      "ms": 565
+    },
+    "ppocr-1600": {
+      "text": "Cervezas\n....2,50 €\nEstrella Damm ..\ncaña\n....3,20€\nVoll-Damm ...\ntercio\n....2,40 €\nEstrella Galicia ....\ncaña\n... 2,80 €\nMahou Cinco Estrellas .....\ntercio\n....2,60€\nAmbar Especial .......\ntercio\n.... 2,10 €\nCruzcampo ......\ncaña",
+      "ms": 875
+    }
+  },
+  "none - generated 18 chalk.jpg": {
+    "ios-vision": {
+      "text": "Craft taps\n\n6\n\nHouse IPA\n\n5.5\n\nPale Ale\n\nBlonde\nDouble IPA\n\n7.5\n\n6\n\nStout\n\nSession IPA\n\nGose\nWhite\n\n5.5",
+      "ms": 1098
+    },
+    "ios-app": {
+      "text": "Craft taps\n\n6\n\nHouse IPA\n\n5.5\n\nPale Ale\n\nBlonde\nDouble IPA\n\n7.5\n\n6\n\nStout\n\nSession IPA\n\nGose\nWhite\n\n5.5",
+      "ms": 1123
+    },
+    "mlkit": {
+      "text": "House IPA\n\nPale Ale\n\nBlonde\n\nDouble 1PA\n\nStout\n\nSession IPA\n\nGose\n\nWhite\n\nCraft taps\n\n6\n\n5.5\n\n5\n\n7.5\n\n6\n\n5.5\n\n6\n\n5.5",
+      "ms": 335
+    },
+    "app": {
+      "text": "Craft taps\n\n6\n5.5\n5\n7.5\n6\n5.5\n6\n5.5\n\nHouse IPA\nPale Ale\nBlonde\nDouble IPA\nStout\nSession IPA\nGose\nWhite",
+      "ms": 914
+    },
+    "ppocr-960": {
+      "text": "Craft taps\n6\nHouse IPA\n5.5\nPale Ale\n5\nBlonde\n7.5\nDouble IPA\n6\nStout\n5.5\nSession IPA\n6\nGose\n5.5\nWhite",
+      "ms": 538
+    },
+    "ppocr-1600": {
+      "text": "Craft taps\n6\nHouse IPA\n5.5\nPale Ale\n5\nBlonde\n7.5\nDouble IPA\n6\nStout\n5.5\nSession IPA\n6\nGose\n5.5\nWhite",
+      "ms": 864
+    }
+  },
+  "none - generated 19 restaurant.jpg": {
+    "ios-vision": {
+      "text": "Birre\n\nPeroni Nastro Azzurro\nLager, 5.0%\n\n5.50\n\nPeroni Capri\nLager, 4.2%\n\n5.20\n\nBirra Moretti\nLager, 4.6%\n\n5.50\n\nMenabrea Bionda\nLager, 4.8%\n\n5.80\n\nPeroni 0.0%\nAlcohol free\n\n4.20",
+      "ms": 816
+    },
+    "ios-app": {
+      "text": "Birre\n\nPeroni Nastro Azzurro\nLager, 5.0%\n\n5.50\n\nPeroni Capri\nLager, 4.2%\n\n5.20\n\nBirra Moretti\nLager, 4.6%\n\n5.50\n\nMenabrea Bionda\nLager, 4.8%\n\n5.80\n\nPeroni 0.0%\nAlcohol free\n\n4.20",
+      "ms": 827
+    },
+    "mlkit": {
+      "text": "Peroni Nastro Azzurro\n\nLager, 5.0%\n\nPeroni Capri\n\nLager, 4.2%\n\nBirra Moretti\nLager, 4.6%\n\nMenabrea Bionda\n\nLager, 4.8%\n\nPeroni 0.0%\n\nAlcohol free\n\nBirre\n\n5.50\n\n5.20\n\n5.50\n\n5.80\n\n4.20",
+      "ms": 248
+    },
+    "app": {
+      "text": "Birre\n\nPeroni Nastro Azzurro\nLager, 5.0%\nPeroni Capri\nLager, 4.2%\n\n5.50\n\n5.20\n\nBirra Moretti\nLager, 4.6%\n\n5.50\n\n5.80\n\nMenabrea Bionda\nLager, 4.8%\n\n4.20\n\nPeroni 0.0%\nAlcohol free",
+      "ms": 861
+    },
+    "ppocr-960": {
+      "text": "Birre\nPeroni Nastro Azzurro\n5.50\nLager, 5.0%\nPeroni Capri\n5.20\nLager, 4.2%\nBirra Moretti\n5.50\nLager, 4.6%\nMenabrea Bionda\n5.80\nLager, 4.8%\nPeroni 0.0%\n4.20\nAlcohol free",
+      "ms": 500
+    },
+    "ppocr-1600": {
+      "text": "Birre\nPeroni Nastro Azzurro\n5.50\nLager, 5.0%\nPeroni Capri\n5.20\nLager, 4.2%\nBirra Moretti\n5.50\nLager, 4.6%\nMenabrea Bionda\n5.80\nLager, 4.8%\nPeroni 0.0%\n4.20\nAlcohol free",
+      "ms": 774
+    }
+  },
+  "none - generated 20 pub.jpg": {
+    "ios-vision": {
+      "text": "THE RED LION\n\nDraught\nBrewDog Punk IPA\n5.4%\n\nBottles\nOld Speckled Hen\n5.0%\nGreene King IPA\n\n6.40\n\n5.20\n\nBrewDog Hazy Jane\n5.0%\n\n6.40\n\n4.60\n\n3.6%\nSt Peter's Golden Ale\n4.7%\n\nStella Artois\n4.6%\n\n5.80\n\n5.40",
+      "ms": 842
+    },
+    "ios-app": {
+      "text": "THE RED LION\n\nDraught\nBrewDog Punk IPA\n5.4%\n\nBottles\nOld Speckled Hen\n5.0%\nGreene King IPA\n\n6.40\n\n5.20\n\nBrewDog Hazy Jane\n5.0%\n\n6.40\n\n4.60\n\n3.6%\nSt Peter's Golden Ale\n4.7%\n\nStella Artois\n4.6%\n\n5.80\n\n5.40",
+      "ms": 870
+    },
+    "mlkit": {
+      "text": "Draught\n\nBrewDog Punk IPA\n\n5.4%\n\nBrewDog Hazy Jane\n\n5.0%\n\n4.6%\n\nStella Artois\n\nTHE RED LION\n\n6.40\n\n6.40\n\n5.80\n\nBottles\n\nOld Speckled Hen\n\n5.0%\n\nGreene King IPA\n\n3.6%\n\nSt Peter's Golden Ale\n\n4.7%\n\n5.20\n\n4.60\n\n5.40",
+      "ms": 283
+    },
+    "app": {
+      "text": "THE RED LION\n\nBottles\nOld Speckled Hen\n5.0%\nGreene King IPA\n3.6%\nSt Peter's Golden Ale\n4.7%\n\nDraught\nBrewDog Punk IPA\n5.4%\nBrewDog Hazy Jane\n5.0%\nStella Artois\n4.6%\n\n5.20\n\n6.40\n\n6.40\n\n4.60\n\n5.80\n\n5.40",
+      "ms": 934
+    },
+    "ppocr-960": {
+      "text": "THE RED LION\nDraught\nBottles\nBrewDog Punk IPA\n6.40\n5.4%\nOld Speckled Hen\n5.20\n5.0%\nBrewDog Hazy Jane\n6.40\n5.0%\nGreene King IPA\n4.60\n3.6%\nStella Artois\n4.6%\n5.80\nSt Peter's Golden Ale\n5.40\n4.7%",
+      "ms": 556
+    },
+    "ppocr-1600": {
+      "text": "THE RED LION\nDraught\nBottles\nBrewDog Punk IPA\n6.40\n5.4%\nOld Speckled Hen\n5.20\n5.0%\nBrewDog Hazy Jane\n6.40\n5.0%\nGreene King IPA\n4.60\n3.6%\nStella Artois\n5.80\n4.6%\nSt Peter's Golden Ale\n5.40\n4.7%",
+      "ms": 783
+    }
+  },
+  "none - generated 25 spanish.jpg": {
+    "ios-vision": {
+      "text": "ÖLMENY\n\nFatöl\nNorrlands Guld\n40 cl\nMariestads Export\n40 cl\nPoppels Poppelino Lager\n\n69 kr\n\n78 kr\n\n82 kr\n\n40 cl\n\nFlaska\nNils Oscar God Lager .\n33 cl\nÁbro Original .....\n33 cl\nSpendrups Premium\n33 cl\n\n69 kr\n\n59 kr\n\n62 kr\n\nGlutenfri öl finns, fråga personalen",
+      "ms": 1197
+    },
+    "ios-app": {
+      "text": "ÖLMENY\n\nFatöl\nNorrlands Guld\n40 cl\nMariestads Export\n40 cl\nPoppels Poppelino Lager\n\n69 kr\n\n78 kr\n\n82 kr\n\n40 cl\n\nFlaska\nNils Oscar God Lager .\n33 cl\nÁbro Original .....\n33 cl\nSpendrups Premium\n33 cl\n\n69 kr\n\n59 kr\n\n62 kr\n\nGlutenfri öl finns, fråga personalen",
+      "ms": 1196
+    },
+    "mlkit": {
+      "text": "Fatöl\n\nNorrlands Guld\n\n40 cl\n\nMariestads Export\n\n40 cl\n\nPoppels Poppelino Lager\n\n40 cl\n\nFlaska\n\nNils Oscar God Lager\n\n33 cl\n\nÅbro Original\n\n33 c\n\nSpendrups Premium\n\nÖLMENY\n\n33 cl\n\nGlutenfri öl finns, fråga personalen\n\n69 kr\n\n78 kr\n\n...82 kr\n\n69 kr\n\n59 kr\n\n62 kr",
+      "ms": 324
+    },
+    "app": {
+      "text": "ÖLMENY\n\nFatöl\nNorrlands Guld ..\n40 cl\nMariestads Export ...\n40 cl\nPoppels Poppelino Lager .\n40 cl\n\n.... 69 kr\n\n... 78 kr\n\n....82 kr\n\nFlaska\nNils Oscar God Lager ..\n33 cl\nÅbro Original ...\n33 cl\nSpendrups Premium.\n33 cl\n\n.....69 kr\n\n.... 59 kr\n\n.... 62 kr\n\nGlutenfri öl finns, fråga personalen ..",
+      "ms": 1245
+    },
+    "ppocr-960": {
+      "text": "ÖLMENY\nFatöl\nNorrlands Guld .\n40 cl\nMariestads Export .\n....69 kr\n40 cl\nPoppels Poppelino Lager .\n.... 78 kr\n40 cl\n....82 kr\nFlaska\nNils Oscar God Lager .\n33 cl\nÅbro Original .\n..69 kr\n33 cl\nSpendrups Premium\n.. 59 kr\n33 cl\n... 62 kr\nGlutenfri öl finns, fråga personalen .",
+      "ms": 689
+    },
+    "ppocr-1600": {
+      "text": "ÖLMENY\nFatöl\nNorrlands Guld ..\n40 cl\nMariestads Export ...\n.... 69 kr\n40 cl\nPoppels Poppelino Lager .\n... 78 kr\n40 cl\n....82 kr\nFlaska\nNils Oscar God Lager ..\n33 cl\nÅbro Original ...\n.....69 kr\n33 cl\nSpendrups Premium.\n.... 59 kr\n33 cl\n.... 62 kr\nGlutenfri öl finns, fråga personalen ..",
+      "ms": 1196
+    }
+  },
+  "Åbro Arton56 Glutenfri + Rådanäs Ekologisk Pilsner Glutenfri + Rådanäs IPA Glutenfri - generated 23 table.jpg": {
+    "ios-vision": {
+      "text": "FLASKÖL & BURK\n\nÅbro Original\nÅbro Arton56 Glutenfri\nRådanäs Ekologisk Pilsner\nRådanäs Ekologisk Pilsner Glutenfri\nRådanäs IPA\nRådanäs IPA Glutenfri\n\n59\n65\n68\n72\n72\n76\n\nLjus lager | 5,2% | 33 cl\n\nLjus lager | 5,6% | 33 cl\nPilsner | 4,8% | 33 cl\n\nPilsner | 4,8% | 33 cl\n\nIPA | 5,5% | 33 cl\n\nIPA | 5,5% | 33 cl",
+      "ms": 864
+    },
+    "ios-app": {
+      "text": "FLASKÖL & BURK\n\nÅbro Original\nÅbro Arton56 Glutenfri\nRådanäs Ekologisk Pilsner\nRådanäs Ekologisk Pilsner Glutenfri\nRådanäs IPA\nRådanäs IPA Glutenfri\n\n59\n65\n68\n72\n72\n76\n\nLjus lager | 5,2% | 33 cl\n\nLjus lager | 5,6% | 33 cl\nPilsner | 4,8% | 33 cl\n\nPilsner | 4,8% | 33 cl\n\nIPA | 5,5% | 33 cl\n\nIPA | 5,5% | 33 cl",
+      "ms": 871
+    },
+    "mlkit": {
+      "text": "Åbro Original\n\nFLASKÖL & BURK\n\nÅbro Arton56 Glutenfri\n\nRådanäs Ekologisk Pilsner\n\nRådanäs Ekologisk Pilsner Glutenfri\n\nRådanäs IPA\n\nRådanäs IPA Glutenfri\n\nLjus lager |5.2% | 33 cd\n\nLjus lager | 5,6% | 33 cl\n\nPilsner | 4,8% | 33 cl\nPilsner | 4,8% | 33 cl\n\nIPA|5,5%| 33 dl\n\nIPA | 5,5% | 33 cl\n\n59\n\n65\n\n68\n\n12\n\n72\n\n76",
+      "ms": 248
+    },
+    "app": {
+      "text": "FLASKÖL & BURK\n\nÅbro Original\nÅbro Arton56 Glutenfri\nRådanäs Ekologisk Pilsner\nRådanäs Ekologisk Pilsner Glutenfri\nRådanäs IPA\nRådanäs IPA Glutenfri\n\n59\n65\n68\n72\n72\n76\n\nLjus lager | 5,2% | 33 cl\nLjus lager | 5,6% | 33 cl\nPilsner | 4,8% | 33 cl\nPilsner | 4,8% | 33 cl\nIPA | 5,5% | 33 cl\nIPA | 5,5% | 33 cl",
+      "ms": 838
+    },
+    "ppocr-960": {
+      "text": "FLASKÖL & BURK\n59\nLjus lager | 5,2% | 33 cl\n65\nÅbro Original\nLjus lager | 5,6% | 33 cl\n68\nÅbro Arton56 Glutenfri\nPilsner | 4,8% | 33 cl\n72\nRådanäs Ekologisk Pilsner\nPilsner | 4,8% | 33 cl\nRådanäs Ekologisk Pilsner Glutenfri\n72\nIPA | 5,5% | 33 cl\n76\nRådanäs IPA\nIPA | 5,5% | 33 cl\nRådanäs IPA Glutenfri",
+      "ms": 496
+    },
+    "ppocr-1600": {
+      "text": "FLASKÖL & BURK\n59\nLjus lager | 5,2% | 33 cl\n65\nÅbro Original\nLjus lager | 5,6% | 33 cl\n68\nÅbro Arton56 Glutenfri\nPilsner | 4,8% | 33 cl\n72\nRådanäs Ekologisk Pilsner\nPilsner | 4,8% | 33 cl\nRådanäs Ekologisk Pilsner Glutenfri\n72\nIPA | 5,5% | 33 cl\n76\nRådanäs IPA\nIPA | 5,5% | 33 cl\nRådanäs IPA Glutenfri",
+      "ms": 766
+    }
+  }
+}

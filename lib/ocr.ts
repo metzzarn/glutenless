@@ -60,20 +60,29 @@ export function extractFullText(result: TextRecognitionResult): string {
 /**
  * Reads the text in an image: with Apple's Vision framework on iOS, which is
  * stronger there than ML Kit, otherwise with ML Kit. Vision's lines are
- * returned as ML Kit blocks (one line each), so everything after this
- * handles both alike.
+ * grouped into ML Kit blocks (`inBlocks`), so everything after this handles
+ * both alike, and a menu name wrapped onto two lines reads as one.
  */
 export async function recognizeText(uri: string): Promise<TextRecognitionResult> {
   if (AppleText.isAppleTextAvailable) {
     const lines = await AppleText.recognizeAsync(uri);
     return {
       text: lines.map((l) => l.text).join('\n'),
-      blocks: lines.map((l) => ({
-        text: l.text,
-        frame: l.frame,
-        lines: [{ text: l.text, frame: l.frame, elements: [], recognizedLanguages: [] }],
-        recognizedLanguages: [],
-      })),
+      blocks: inBlocks(lines).map((block) => {
+        const left = Math.min(...block.map((l) => l.frame.left));
+        const top = Math.min(...block.map((l) => l.frame.top));
+        return {
+          text: block.map((l) => l.text).join('\n'),
+          frame: {
+            left,
+            top,
+            width: Math.max(...block.map((l) => l.frame.left + l.frame.width)) - left,
+            height: Math.max(...block.map((l) => l.frame.top + l.frame.height)) - top,
+          },
+          lines: block.map((l) => ({ text: l.text, frame: l.frame, elements: [], recognizedLanguages: [] })),
+          recognizedLanguages: [],
+        };
+      }),
     };
   }
   return TextRecognition.recognize(uri);
@@ -96,16 +105,20 @@ export function inBlocks<T extends Pick<OcrLine, 'frame'> & { corners?: [number,
     const { left, top, width, height } = l.frame;
     return l.corners ?? [[left, top], [left + width, top], [left + width, top + height], [left, top + height]];
   };
-  // The page's slant: the median angle of the lines' long sides.
+  // The page's slant: the median angle of the lines' long sides, weighted by
+  // their length. Long lines show the slant best, and Apple Vision gives short
+  // ones ("33 cl", prices) an unrotated rectangle even on a tilted photo.
   const angles = lines.map((l) => {
     const [a, b, c] = quad(l);
     const [p, q] = Math.hypot(b[0] - a[0], b[1] - a[1]) >= Math.hypot(c[0] - b[0], c[1] - b[1]) ? [a, b] : [b, c];
     let angle = Math.atan2(q[1] - p[1], q[0] - p[0]);
     if (angle > Math.PI / 2) angle -= Math.PI;
     if (angle <= -Math.PI / 2) angle += Math.PI;
-    return angle;
+    return { angle, length: Math.hypot(q[0] - p[0], q[1] - p[1]) };
   });
-  const slant = [...angles].sort((x, y) => x - y)[Math.floor(angles.length / 2)] ?? 0;
+  angles.sort((x, y) => x.angle - y.angle);
+  let half = angles.reduce((sum, a) => sum + a.length, 0) / 2;
+  const slant = angles.find((a) => (half -= a.length) <= 0)?.angle ?? 0;
   const cos = Math.cos(-slant), sin = Math.sin(-slant);
   const upright = lines.map((line) => {
     const pts = quad(line).map(([x, y]) => [x * cos - y * sin, x * sin + y * cos]);

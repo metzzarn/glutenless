@@ -60,20 +60,29 @@ export function extractFullText(result: TextRecognitionResult): string {
 /**
  * Reads the text in an image: with Apple's Vision framework on iOS, which is
  * stronger there than ML Kit, otherwise with ML Kit. Vision's lines are
- * returned as ML Kit blocks (one line each), so everything after this
- * handles both alike.
+ * grouped into ML Kit blocks (`inBlocks`), so everything after this handles
+ * both alike, and a menu name wrapped onto two lines reads as one.
  */
 export async function recognizeText(uri: string): Promise<TextRecognitionResult> {
   if (AppleText.isAppleTextAvailable) {
     const lines = await AppleText.recognizeAsync(uri);
     return {
       text: lines.map((l) => l.text).join('\n'),
-      blocks: lines.map((l) => ({
-        text: l.text,
-        frame: l.frame,
-        lines: [{ text: l.text, frame: l.frame, elements: [], recognizedLanguages: [] }],
-        recognizedLanguages: [],
-      })),
+      blocks: inBlocks(lines).map((block) => {
+        const left = Math.min(...block.map((l) => l.frame.left));
+        const top = Math.min(...block.map((l) => l.frame.top));
+        return {
+          text: block.map((l) => l.text).join('\n'),
+          frame: {
+            left,
+            top,
+            width: Math.max(...block.map((l) => l.frame.left + l.frame.width)) - left,
+            height: Math.max(...block.map((l) => l.frame.top + l.frame.height)) - top,
+          },
+          lines: block.map((l) => ({ text: l.text, frame: l.frame, elements: [], recognizedLanguages: [] })),
+          recognizedLanguages: [],
+        };
+      }),
     };
   }
   return TextRecognition.recognize(uri);

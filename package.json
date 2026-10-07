@@ -47,6 +47,13 @@
     "stamp-data": "node tools/stamp-data.mjs"
   },
   "private": true,
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": ["expo-camera"]
+      }
+    }
+  },
   "jest": {
     "preset": "jest-expo",
     "moduleNameMapper": {

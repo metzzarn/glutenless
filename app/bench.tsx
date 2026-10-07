@@ -5,7 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listBeers, type Beer } from '../lib/db';
 import { matchBeersInMenuText } from '../lib/match';
 import { recognizeText, extractFullText, scanPhoto } from '../lib/ocr';
-import { listImages, modelDir, readAsync } from '../modules/ocr-models';
+import * as AppleText from '../modules/apple-text';
+import * as OcrModels from '../modules/ocr-models';
+import { isOcrModelsAvailable, modelDir, readAsync } from '../modules/ocr-models';
 import { fonts, spacing, useStyles, type Palette } from '../lib/theme';
 
 /**
@@ -19,17 +21,23 @@ import { fonts, spacing, useStyles, type Palette } from '../lib/theme';
  * With ?set=menus, each photo in menus/ is read by every reader in
  * MENU_READERS and logged as `MENU file :: reader :: ms :: part/parts :: text`;
  * tools/ocr-bench/score_menus.mts scores those texts with the menu matcher.
+ *
+ * On iOS the photos come from the app's Documents dir instead (images/,
+ * menus/), are read with Apple Vision, and the log lines show in Metro's output.
  */
 
+/** The photos in a folder: on iOS from the Documents dir, on Android from the external files dir. */
+const listImages = AppleText.isAppleTextAvailable ? AppleText.listImages : OcrModels.listImages;
+
 /**
- * Readers compared on menus: ML Kit, PP-OCRv6 finding text at several sizes
- * (no WATERec, which can invent text), and `app`, a menu scan as the camera
- * does it.
+ * Readers compared on menus: the platform's (ML Kit, or Apple Vision on iOS),
+ * PP-OCRv6 finding text at several sizes (no WATERec, which can invent text;
+ * Android only), and `app`, a menu scan as the camera does it.
  */
 const MENU_READERS: { label: string; read: (uri: string, beers: Beer[]) => Promise<string> }[] = [
-  { label: 'mlkit', read: async (uri) => extractFullText(await recognizeText(uri)) },
+  { label: AppleText.isAppleTextAvailable ? 'vision' : 'mlkit', read: async (uri) => extractFullText(await recognizeText(uri)) },
   { label: 'app', read: async (uri, beers) => (await scanPhoto(uri, 'menu', beers)).text },
-  ...[960, 1600].map((side) => ({
+  ...(isOcrModelsAvailable ? [960, 1600] : []).map((side) => ({
     label: `ppocr-${side}`,
     read: async (uri: string) => (await readAsync(uri, { maxWaterecLines: 0, detectMaxSide: side })).lines.map((l) => l.text).join('\n'),
   })),

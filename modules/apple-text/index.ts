@@ -5,6 +5,8 @@ export type AppleTextLine = {
   confidence: number;
   /** In the photo's pixels, top-left origin. */
   frame: { left: number; top: number; width: number; height: number };
+  /** The line's rotated rectangle, its corners clockwise from the top left: its true slant and height. */
+  corners: [number, number][];
 };
 
 type NativeAppleText = {

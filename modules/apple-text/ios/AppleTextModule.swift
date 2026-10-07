@@ -53,9 +53,12 @@ public class AppleTextModule: Module {
         guard let candidate = observation.topCandidates(1).first else { return nil }
         // Vision's boxes are 0–1 with the origin at the bottom left.
         let box = observation.boundingBox
+        // The line's rotated rectangle, clockwise from its top left: its true slant and height.
+        let corners = [observation.topLeft, observation.topRight, observation.bottomRight, observation.bottomLeft]
         return [
           "text": candidate.string,
           "confidence": Double(candidate.confidence),
+          "corners": corners.map { [Double($0.x * width), Double((1 - $0.y) * height)] },
           "frame": [
             "left": Double(box.minX * width),
             "top": Double((1 - box.maxY) * height),

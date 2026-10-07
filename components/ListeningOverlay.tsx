@@ -35,9 +35,16 @@ function Bar({ delay }: { delay: number }) {
 export function ListeningOverlay({
   visible,
   onCancel,
+  language,
+  otherLanguage,
+  onSwitchLanguage,
 }: {
   visible: boolean;
   onCancel: () => void;
+  /** The language being listened in, and the one to switch to. */
+  language: string;
+  otherLanguage: string;
+  onSwitchLanguage: () => void;
 }) {
   const styles = useStyles(makeStyles);
   const pulse = useSharedValue(1);
@@ -73,6 +80,11 @@ export function ListeningOverlay({
           ))}
         </View>
         <Text style={styles.label}>Listening — say a beer name…</Text>
+        <Pressable onPress={onSwitchLanguage} accessibilityRole="button" accessibilityLabel={`Listen in ${otherLanguage} instead`}>
+          <Text style={styles.language}>
+            {language} · <Text style={styles.switch}>{otherLanguage}</Text>
+          </Text>
+        </Pressable>
         <Pressable style={styles.cancel} onPress={onCancel} accessibilityRole="button">
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
@@ -110,6 +122,8 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   wave: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 26 },
   bar: { width: 4, borderRadius: 2, backgroundColor: colors.waveBar },
   label: { fontFamily: fonts.sansBold, fontSize: 14.5, color: colors.white },
+  language: { fontFamily: fonts.sans, fontSize: 13, color: colors.white, opacity: 0.8 },
+  switch: { textDecorationLine: 'underline' },
   cancel: {
     paddingHorizontal: spacing(5),
     paddingVertical: spacing(2),

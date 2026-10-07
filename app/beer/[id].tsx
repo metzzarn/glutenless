@@ -7,6 +7,7 @@ import { DiscontinuedBadge } from '../../components/DiscontinuedBadge';
 import { GlutenStatusBox } from '../../components/GlutenStatusBox';
 import { PersonalNote } from '../../components/PersonalNote';
 import { getBeerById, toggleFavorite, type Beer } from '../../lib/db';
+import { breweryQuery } from '../../lib/search';
 import { isGlutenStatusConfirmed } from '../../lib/status';
 import { fonts, radii, spacing, useColors, useStyles, type Palette } from '../../lib/theme';
 
@@ -76,7 +77,15 @@ export default function BeerDetailScreen() {
 
         <Text style={styles.name}>{beer.name}</Text>
         <Text style={styles.subtitle}>
-          {beer.brewery} · {beer.style}
+          <Text
+            style={styles.breweryLink}
+            onPress={() => router.dismissTo({ pathname: '/', params: { q: breweryQuery(beer.brewery) } })}
+            accessibilityRole="link"
+            accessibilityHint="Shows this brewery's beers in the list"
+          >
+            {beer.brewery}
+          </Text>
+          {` · ${beer.style}`}
         </Text>
 
         <View style={styles.statsRow}>
@@ -161,6 +170,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   photoBadgeText: { fontFamily: fonts.sansBold, fontSize: 11, color: colors.brand },
   name: { fontFamily: fonts.serif, fontSize: 25, color: colors.ink, marginBottom: 2 },
   subtitle: { fontFamily: fonts.sans, fontSize: 14, color: colors.textMuted2, marginBottom: spacing(4) },
+  breweryLink: { textDecorationLine: 'underline' },
   statsRow: { flexDirection: 'row', gap: spacing(2.5), marginBottom: spacing(4) },
   statBox: {
     flex: 1,
